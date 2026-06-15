@@ -8,4 +8,7 @@ const config = getDefaultConfig(__dirname);
 config.resolver.sourceExts.push("wasm");
 config.resolver.assetExts.push("wasm");
 
+// Add support for .m4a audio asset files
+config.resolver.assetExts.push("m4a");
+
 module.exports = withNativeWind(config, { input: "./app/global.css" });

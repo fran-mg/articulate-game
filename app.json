@@ -18,9 +18,7 @@
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.franmg.rumble",
@@ -50,14 +48,6 @@
         "expo-audio",
         {
           "enableBackgroundPlayback": true
-        }
-      ],
-      [
-        "expo-asset",
-        {
-          "assets": [
-            "./assets/audio"
-          ]
         }
       ]
     ],
