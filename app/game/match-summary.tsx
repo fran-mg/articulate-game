@@ -4,15 +4,17 @@ import React, { useEffect } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGameStore } from "../../stores/useGameStore";
-import { playSound } from "../../hooks/useSoundManager";
+import { useSoundManager } from "../../hooks/useSoundManager";
 
 export default function MatchSummaryScreen() {
   const router = useRouter();
   const { playStyle, participants, roundScores, endMatch } = useGameStore();
 
+  const { playSound } = useSoundManager(["score_reveal"]);
+
   // ── SOUND: play once when the screen appears ────────────────────────────
   useEffect(() => {
-    playSound("score_reveal");
+    playSound("soft_score_reveal");
   }, []);
 
   const totals: Record<number, number> = {};

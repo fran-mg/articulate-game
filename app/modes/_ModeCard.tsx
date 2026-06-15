@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { playSound } from "../../hooks/useSoundManager";
+import { useSoundManager } from "../../hooks/useSoundManager";
 import { getModeTheme } from "../../utils/_modeTheme";
 
 interface ModeCardProps {
@@ -11,6 +11,8 @@ interface ModeCardProps {
 export default function ModeCard({ modeKey, onPress }: ModeCardProps) {
   const { accent, meta } = getModeTheme(modeKey);
   const Icon = meta.Icon;
+
+  const { playSound } = useSoundManager(["click"]);
 
   const handlePress = () => {
     playSound("click");

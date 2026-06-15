@@ -5,7 +5,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGameStore } from "../../../stores/useGameStore";
 import { getModeAccent } from "../../../utils/_modeTheme";
-import { playSound } from "../../../hooks/useSoundManager";
+import { useSoundManager } from "../../../hooks/useSoundManager";
 import HistoryList from "./_HistoryList";
 import Modals from "./_Modals";
 import ScoreHeader from "./_ScoreHeader";
@@ -29,6 +29,8 @@ export default function RoundSummaryScreen() {
   } = gameStore;
 
   const accent = getModeAccent(mode);
+
+  const { playSound } = useSoundManager(["click"]);
 
   // Mid-game edit state — typed to match the selector components
   const [editLimit, setEditLimit] = useState<number | "Infinity">(targetLimit);

@@ -15,7 +15,7 @@ import {
   downloadAndImportDeck,
   fetchCloudDecksIndex,
 } from "../../utils/cloudDecks";
-import { playSound } from "../../hooks/useSoundManager";
+import { useSoundManager } from "../../hooks/useSoundManager";
 import { useAppAlert } from "../_AppAlert";
 
 interface CloudDecksModalProps {
@@ -50,6 +50,8 @@ export default function CloudDecksModal({
   const [cloudDecks, setCloudDecks] = useState<CloudDeckIndexItem[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const { playSound } = useSoundManager(["download"]);
 
   const { showAlert, AlertRender } = useAppAlert();
 

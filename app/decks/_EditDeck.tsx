@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import db from "../../utils/database";
-import { playSound } from "../../hooks/useSoundManager";
+import { useSoundManager } from "../../hooks/useSoundManager";
 
 // Helper to reliably map icon names
 const getLucideIcon = (iconName: string | undefined, Fallback: any) => {
@@ -37,6 +37,8 @@ export default function EditDeckModal({
 }: EditDeckModalProps) {
   const [cards, setCards] = useState<any[]>([]);
   const [newWord, setNewWord] = useState("");
+
+  const { playSound } = useSoundManager(["download", "bin"]);
 
   useEffect(() => {
     if (deck) loadCards();

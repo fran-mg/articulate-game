@@ -18,7 +18,7 @@ import {
 } from "../../../hooks/useTiltControl";
 import { useGameStore } from "../../../stores/useGameStore";
 import { getModeTheme } from "../../../utils/_modeTheme";
-import { playSound } from "../../../hooks/useSoundManager";
+import { useSoundManager } from "../../../hooks/useSoundManager";
 import CountdownScreen from "./_CountdownScreen";
 import PlayingCard from "./_PlayingCard";
 import ProgressBar from "./_ProgressBar";
@@ -29,6 +29,14 @@ export type CardFlashState = "default" | "pass" | "done";
 
 export default function PlayScreen() {
   const router = useRouter();
+
+  const { playSound } = useSoundManager([
+    "countdown",
+    "time_up",
+    "correct",
+    "pass",
+  ]);
+
   const [dims, setDims] = useState(Dimensions.get("window"));
 
   useEffect(() => {

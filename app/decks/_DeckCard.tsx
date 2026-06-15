@@ -2,7 +2,7 @@ import * as LucideIcons from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { Deck } from "../../stores/useDeckStore";
-import { playSound } from "../../hooks/useSoundManager";
+import { useSoundManager } from "../../hooks/useSoundManager";
 import { styles } from "./Decks.styles";
 
 // Known icon name remaps — handles renamed or swapped Lucide icons
@@ -40,6 +40,8 @@ interface Props {
 export default function DeckCard({ deck, onEdit, onDelete }: Props) {
   const DeckIcon = getLucideIcon(deck.icon, LucideIcons.Layers);
   const deckColor = deck.color || "#6366f1";
+
+  const { playSound } = useSoundManager(["bin"]);
 
   const handleDelete = (deckId: string) => {
     playSound("bin");
