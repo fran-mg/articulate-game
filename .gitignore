@@ -57,6 +57,10 @@ package-list.txt
 /ios
 /android
 
+# Android Signing Secrets
+*.keystore
+credentials.json
+
 # Personal
 ME_NOTES.md
 codebase_dump.txt
