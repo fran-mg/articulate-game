@@ -11,13 +11,14 @@ import { useRosterStore } from "../../../stores/useRosterStore";
 import { ModeAccent } from "../../../utils/_modeTheme";
 import { Participant } from "../../../utils/database";
 import ParticipantItem from "./_ParticipantItem";
-import { useAppAlert } from "../../_AppAlert"; // Updated import to include underscore
+import { useAppAlert } from "../../_AppAlert";
 
 interface ParticipantSelectorProps {
   playStyle: PlayStyle;
   onPlayStyleChange: (style: PlayStyle) => void;
   onScrollRequest: (y: number) => void;
   accent: ModeAccent;
+  onResetRoster: () => void; // ── NEW PROP
 }
 
 export default function ParticipantSelector({
@@ -25,6 +26,7 @@ export default function ParticipantSelector({
   onPlayStyleChange,
   onScrollRequest,
   accent,
+  onResetRoster,
 }: ParticipantSelectorProps) {
   const {
     participants,
@@ -32,6 +34,8 @@ export default function ParticipantSelector({
     updateParticipant,
     deleteParticipant,
     reorderParticipants,
+    saveRoster, // ── NEW
+    resetToDefault, // ── NEW
   } = useRosterStore();
 
   const { showAlert, AlertRender } = useAppAlert();
@@ -85,7 +89,6 @@ export default function ParticipantSelector({
   };
 
   const handleAdd = () => {
-    // If we're currently editing a brand-new unnamed item, force naming it first
     if (isNewItemRef.current && editingId !== null) {
       showAlert(
         "Name required",
@@ -94,7 +97,6 @@ export default function ParticipantSelector({
       return;
     }
 
-    // If editing an existing item with no name typed yet, block too
     if (editingId !== null && editName.trim() === "") {
       showAlert(
         "Name required",
@@ -103,7 +105,6 @@ export default function ParticipantSelector({
       return;
     }
 
-    // If mid-edit of an existing item, confirm it first before adding new
     if (editingId !== null) {
       const trimmed = editName.trim();
       if (trimmed) {
@@ -120,11 +121,39 @@ export default function ParticipantSelector({
     }, 50);
   };
 
-  // Custom logic to move items on the web
+  // ── Save to presets ──
+  const handleSave = () => {
+    // If currently mid-edit, lock it in automatically
+    if (editingId !== null) {
+      const trimmed = editName.trim();
+      if (trimmed) updateParticipant(editingId, trimmed);
+      else if (isNewItemRef.current) deleteParticipant(editingId);
+      setEditingId(null);
+      isNewItemRef.current = false;
+    }
+
+    // Wrap in timeout so UI states (like closing inputs) settle first
+    setTimeout(() => {
+      saveRoster(playStyle);
+      showAlert(
+        "Roster Saved",
+        `Your ${playStyle} lineup has been saved for future games.`,
+      );
+    }, 10);
+  };
+
+  // ── NEW: Revert to default hardcodes ──
+  const handleReset = () => {
+    setEditingId(null);
+    isNewItemRef.current = false;
+    resetToDefault(playStyle);
+    onResetRoster();
+    showAlert("Reset Complete", `Restored to the default ${playStyle} lineup.`);
+  };
+
   const handleMove = (index: number, direction: -1 | 1) => {
     const newParticipants = [...participants];
     const targetIndex = index + direction;
-    // Swap the elements
     [newParticipants[index], newParticipants[targetIndex]] = [
       newParticipants[targetIndex],
       newParticipants[index],
@@ -132,8 +161,6 @@ export default function ParticipantSelector({
     reorderParticipants(newParticipants);
   };
 
-  // Wrapped the custom component in ScaleDecorator so DraggableFlatList
-  // has a Native Component to hook its measurements onto.
   const renderItem = (params: RenderItemParams<Participant>) => {
     const index = participants.findIndex((p) => p.id === params.item.id);
 
@@ -279,6 +306,33 @@ export default function ParticipantSelector({
             Add {playStyle === "player" ? "Player" : "Team"}
           </Text>
         </TouchableOpacity>
+
+        {/* ── Utility options row ── */}
+        <View style={styles.utilityRow}>
+          <TouchableOpacity
+            onPress={handleSave}
+            style={styles.utilityBtn}
+            activeOpacity={0.6}
+          >
+            <LucideIcons.Save size={13} color="#64748b" strokeWidth={2.5} />
+            <Text style={styles.utilityBtnText}>Save Lineup</Text>
+          </TouchableOpacity>
+
+          <View style={styles.utilityDivider} />
+
+          <TouchableOpacity
+            onPress={handleReset}
+            style={styles.utilityBtn}
+            activeOpacity={0.6}
+          >
+            <LucideIcons.RotateCcw
+              size={13}
+              color="#64748b"
+              strokeWidth={2.5}
+            />
+            <Text style={styles.utilityBtnText}>Reset Defaults</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {AlertRender}
@@ -368,7 +422,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 18,
+    paddingBottom: 16,
   },
   footerMeta: {
     flexDirection: "row",
@@ -408,5 +462,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     letterSpacing: 0.3,
+  },
+
+  // ── Utility Row Styles ──────────────────────────────────────────
+  utilityRow: {
+    flexDirection: "row",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.05)",
+    alignItems: "center",
+  },
+  utilityBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 4,
+  },
+  utilityBtnText: {
+    color: "#64748b",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  utilityDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
 });

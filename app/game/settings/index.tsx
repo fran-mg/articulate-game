@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { NestableScrollContainer } from "react-native-draggable-flatlist";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDeckStore } from "../../../stores/useDeckStore"; // Keep for handleStartGame
+import { useDeckStore } from "../../../stores/useDeckStore";
 import {
   PlayStyle,
   ScoringStyle,
@@ -121,6 +121,12 @@ export default function SettingsScreen() {
     router.replace("/game/play");
   };
 
+  // Tells local cache to drop its temp data on reset
+  const handleResetRoster = () => {
+    if (playStyle === "team") cachedTeamsRef.current = null;
+    else cachedPlayersRef.current = null;
+  };
+
   const namedCount = participants.filter((p) => p.name.trim()).length;
   const participantLabel = playStyle === "team" ? "Teams" : "Players";
 
@@ -211,6 +217,7 @@ export default function SettingsScreen() {
             onPlayStyleChange={handlePlayStyleChange}
             onScrollRequest={handleScrollRequest}
             accent={accent}
+            onResetRoster={handleResetRoster}
           />
 
           <DeckSelector

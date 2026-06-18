@@ -1,4 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { Participant } from "../utils/database";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -32,6 +34,8 @@ const DEFAULT_TEAM_ROSTER: Participant[] = [
 
 interface RosterState {
   participants: Participant[];
+  savedPlayers: Participant[];
+  savedTeams: Participant[];
 
   /** Initialise with sensible defaults for the chosen play style */
   initRoster: (playStyle: "player" | "team") => void;
@@ -40,57 +44,96 @@ interface RosterState {
   updateParticipant: (id: number, name: string) => void;
   deleteParticipant: (id: number) => void;
   reorderParticipants: (newOrder: Participant[]) => void;
-
-  /** Returns the next color not already used, cycling if all are taken */
   getNextColor: () => string;
+
+  /** Save the current active roster to memory */
+  saveRoster: (playStyle: "player" | "team") => void;
+  /** Wipe custom saved data and revert to initial hardcoded defaults */
+  resetToDefault: (playStyle: "player" | "team") => void;
 }
 
-export const useRosterStore = create<RosterState>((set, get) => ({
-  participants: DEFAULT_TEAM_ROSTER,
+export const useRosterStore = create<RosterState>()(
+  persist(
+    (set, get) => ({
+      participants: DEFAULT_TEAM_ROSTER.map((p) => ({ ...p })),
+      savedPlayers: DEFAULT_PLAYER_ROSTER.map((p) => ({ ...p })),
+      savedTeams: DEFAULT_TEAM_ROSTER.map((p) => ({ ...p })),
 
-  initRoster: (playStyle) => {
-    set({
-      participants:
-        playStyle === "player"
-          ? DEFAULT_PLAYER_ROSTER.map((p) => ({ ...p }))
-          : DEFAULT_TEAM_ROSTER.map((p) => ({ ...p })),
-    });
-  },
+      initRoster: (playStyle) => {
+        const { savedPlayers, savedTeams } = get();
+        set({
+          participants:
+            playStyle === "player"
+              ? savedPlayers.map((p) => ({ ...p }))
+              : savedTeams.map((p) => ({ ...p })),
+        });
+      },
 
-  addParticipant: (playStyle) => {
-    const { participants, getNextColor } = get();
-    const newParticipant: Participant = {
-      id: generateId(),
-      name: "",
-      color: getNextColor(),
-      type: playStyle as "player" | "team",
-    };
-    set({ participants: [...participants, newParticipant] });
-  },
+      addParticipant: (playStyle) => {
+        const { participants, getNextColor } = get();
+        const newParticipant: Participant = {
+          id: generateId(),
+          name: "",
+          color: getNextColor(),
+          type: playStyle as "player" | "team",
+        };
+        set({ participants: [...participants, newParticipant] });
+      },
 
-  updateParticipant: (id, name) => {
-    set((state) => ({
-      participants: state.participants.map((p) =>
-        p.id === id ? { ...p, name } : p,
-      ),
-    }));
-  },
+      updateParticipant: (id, name) => {
+        set((state) => ({
+          participants: state.participants.map((p) =>
+            p.id === id ? { ...p, name } : p,
+          ),
+        }));
+      },
 
-  deleteParticipant: (id) => {
-    set((state) => ({
-      participants: state.participants.filter((p) => p.id !== id),
-    }));
-  },
+      deleteParticipant: (id) => {
+        set((state) => ({
+          participants: state.participants.filter((p) => p.id !== id),
+        }));
+      },
 
-  reorderParticipants: (newOrder) => {
-    set({ participants: newOrder });
-  },
+      reorderParticipants: (newOrder) => {
+        set({ participants: newOrder });
+      },
 
-  getNextColor: () => {
-    const used = get().participants.map((p) => p.color);
-    const available = PRESET_COLORS.filter((c) => !used.includes(c));
-    return available.length > 0
-      ? available[0]
-      : PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-  },
-}));
+      getNextColor: () => {
+        const used = get().participants.map((p) => p.color);
+        const available = PRESET_COLORS.filter((c) => !used.includes(c));
+        return available.length > 0
+          ? available[0]
+          : PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+      },
+
+      saveRoster: (playStyle) => {
+        const { participants } = get();
+        if (playStyle === "player") {
+          set({ savedPlayers: participants.map((p) => ({ ...p })) });
+        } else {
+          set({ savedTeams: participants.map((p) => ({ ...p })) });
+        }
+      },
+
+      resetToDefault: (playStyle) => {
+        if (playStyle === "player") {
+          const def = DEFAULT_PLAYER_ROSTER.map((p) => ({ ...p }));
+          set({ savedPlayers: def, participants: def });
+        } else {
+          const def = DEFAULT_TEAM_ROSTER.map((p) => ({ ...p }));
+          set({ savedTeams: def, participants: def });
+        }
+      },
+    }),
+    {
+      name: "roster-store",
+      storage: createJSONStorage(() => AsyncStorage),
+      // We ONLY save the permanent presets, NOT the active session participants.
+      // This prevents halfway-edited names from accidentally persisting on app close.
+      partialize: (state) => ({
+        savedPlayers: state.savedPlayers,
+        savedTeams: state.savedTeams,
+      }),
+    },
+  ),
+);
