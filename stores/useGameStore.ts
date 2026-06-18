@@ -5,7 +5,7 @@ import { Participant } from "../utils/database";
 
 export type GameMode = "headsup" | "catchphrase" | "taboo";
 export type ScoringStyle = "rounds" | "boardgame";
-export type PlayStyle = "solo" | "team";
+export type PlayStyle = "player" | "team";
 type CardResult = "guessed" | "passed";
 
 // Re-export so consumers only need to import from one store file
@@ -38,7 +38,7 @@ interface GameState {
 
   /**
    * The single source of truth for who is playing.
-   * solo mode → one entry per player
+   * player mode → one entry per player
    * team mode → one entry per team
    * The game engine never needs to know which type it is — both are treated
    * identically for turns, scoring, and history.

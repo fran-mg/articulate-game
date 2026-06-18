@@ -18,7 +18,7 @@ const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
 
 // ─── DEFAULTS ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_SOLO_ROSTER: Participant[] = [
+const DEFAULT_PLAYER_ROSTER: Participant[] = [
   { id: 1, name: "Player 1", color: PRESET_COLORS[0], type: "player" },
   { id: 2, name: "Player 2", color: PRESET_COLORS[1], type: "player" },
 ];
@@ -34,9 +34,9 @@ interface RosterState {
   participants: Participant[];
 
   /** Initialise with sensible defaults for the chosen play style */
-  initRoster: (playStyle: "solo" | "team") => void;
+  initRoster: (playStyle: "player" | "team") => void;
 
-  addParticipant: (playStyle: "solo" | "team") => void;
+  addParticipant: (playStyle: "player" | "team") => void;
   updateParticipant: (id: number, name: string) => void;
   deleteParticipant: (id: number) => void;
   reorderParticipants: (newOrder: Participant[]) => void;
@@ -51,8 +51,8 @@ export const useRosterStore = create<RosterState>((set, get) => ({
   initRoster: (playStyle) => {
     set({
       participants:
-        playStyle === "solo"
-          ? DEFAULT_SOLO_ROSTER.map((p) => ({ ...p }))
+        playStyle === "player"
+          ? DEFAULT_PLAYER_ROSTER.map((p) => ({ ...p }))
           : DEFAULT_TEAM_ROSTER.map((p) => ({ ...p })),
     });
   },
@@ -63,7 +63,7 @@ export const useRosterStore = create<RosterState>((set, get) => ({
       id: generateId(),
       name: "",
       color: getNextColor(),
-      type: playStyle === "solo" ? "player" : "team",
+      type: playStyle as "player" | "team",
     };
     set({ participants: [...participants, newParticipant] });
   },

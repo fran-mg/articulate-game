@@ -41,8 +41,6 @@ export default function ParticipantSelector({
   const [containerY, setContainerY] = useState(0);
   const isNewItemRef = useRef(false);
 
-  const label = playStyle === "solo" ? "player" : "team";
-
   useEffect(() => {
     setEditingId(null);
     setEditName("");
@@ -64,7 +62,7 @@ export default function ParticipantSelector({
   const handleConfirmEdit = () => {
     const trimmed = editName.trim();
     if (!trimmed) {
-      showAlert("Name required", `Please give this ${label} a name.`);
+      showAlert("Name required", `Please give this ${playStyle} a name.`);
       return;
     }
     updateParticipant(editingId!, trimmed);
@@ -80,7 +78,7 @@ export default function ParticipantSelector({
 
   const handleDelete = (id: number) => {
     if (participants.length <= 1) {
-      showAlert("Can't remove", `You need at least one ${label}.`);
+      showAlert("Can't remove", `You need at least one ${playStyle}.`);
       return;
     }
     deleteParticipant(id);
@@ -91,7 +89,7 @@ export default function ParticipantSelector({
     if (isNewItemRef.current && editingId !== null) {
       showAlert(
         "Name required",
-        `Please name the current ${label} before adding another.`,
+        `Please name the current ${playStyle} before adding another.`,
       );
       return;
     }
@@ -100,7 +98,7 @@ export default function ParticipantSelector({
     if (editingId !== null && editName.trim() === "") {
       showAlert(
         "Name required",
-        `Please finish naming the current ${label} before adding another.`,
+        `Please finish naming the current ${playStyle} before adding another.`,
       );
       return;
     }
@@ -178,31 +176,32 @@ export default function ParticipantSelector({
           {/* Solo / Teams toggle */}
           <View style={styles.styleToggle}>
             <TouchableOpacity
-              onPress={() => onPlayStyleChange("solo")}
+              onPress={() => onPlayStyleChange("player")}
               style={[
                 styles.styleBtn,
-                playStyle === "solo" && {
+                playStyle === "player" && {
                   backgroundColor: accent.colorBg,
                   borderColor: accent.colorBorder,
                 },
-                playStyle !== "solo" && styles.styleBtnInactive,
+                playStyle !== "player" && styles.styleBtnInactive,
               ]}
               activeOpacity={0.75}
             >
               <LucideIcons.User
                 size={11}
-                color={playStyle === "solo" ? accent.colorMuted : "#475569"}
+                color={playStyle === "player" ? accent.colorMuted : "#475569"}
                 strokeWidth={2.5}
               />
               <Text
                 style={[
                   styles.styleBtnText,
                   {
-                    color: playStyle === "solo" ? accent.colorMuted : "#475569",
+                    color:
+                      playStyle === "player" ? accent.colorMuted : "#475569",
                   },
                 ]}
               >
-                Solo
+                Players
               </Text>
             </TouchableOpacity>
 
@@ -254,11 +253,7 @@ export default function ParticipantSelector({
         <View style={styles.footerMeta}>
           <Text style={styles.footerCount}>
             {participants.length}{" "}
-            {participants.length === 1
-              ? label
-              : playStyle === "solo"
-                ? "players"
-                : "teams"}
+            {participants.length === 1 ? playStyle : `${playStyle}s`}
           </Text>
           <View style={styles.dragHint}>
             <LucideIcons.GripVertical
@@ -281,7 +276,7 @@ export default function ParticipantSelector({
             strokeWidth={2.5}
           />
           <Text style={[styles.addBtnText, { color: accent.colorMuted }]}>
-            Add {playStyle === "solo" ? "Player" : "Team"}
+            Add {playStyle === "player" ? "Player" : "Team"}
           </Text>
         </TouchableOpacity>
       </View>

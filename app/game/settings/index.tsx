@@ -42,7 +42,7 @@ export default function SettingsScreen() {
 
   const scrollRef = useRef<any>(null);
   const cachedTeamsRef = useRef<Participant[] | null>(null);
-  const cachedSolosRef = useRef<Participant[] | null>(null);
+  const cachedPlayersRef = useRef<Participant[] | null>(null);
 
   const [scoringStyle, setScoringStyle] = useState<ScoringStyle>("rounds");
   const [targetLimit, setTargetLimit] = useState<number | "Infinity">(3);
@@ -53,23 +53,23 @@ export default function SettingsScreen() {
   useEffect(() => {
     initRoster("team");
     cachedTeamsRef.current = null;
-    cachedSolosRef.current = null;
+    cachedPlayersRef.current = null;
   }, []);
 
   const handlePlayStyleChange = (style: PlayStyle) => {
     if (style === playStyle) return;
     const cur = useRosterStore.getState().participants;
     if (playStyle === "team") cachedTeamsRef.current = cur;
-    else cachedSolosRef.current = cur;
+    else cachedPlayersRef.current = cur;
     setPlayStyle(style);
     if (style === "team") {
       if (cachedTeamsRef.current)
         useRosterStore.setState({ participants: cachedTeamsRef.current });
       else initRoster("team");
     } else {
-      if (cachedSolosRef.current)
-        useRosterStore.setState({ participants: cachedSolosRef.current });
-      else initRoster("solo");
+      if (cachedPlayersRef.current)
+        useRosterStore.setState({ participants: cachedPlayersRef.current });
+      else initRoster("player");
     }
   };
 
