@@ -111,7 +111,9 @@ export default function SettingsScreen() {
       cardsInRound: cards,
     });
 
-    playSound("countdown_tick");
+    if (selectedMode !== "headsup") {
+      playSound("countdown_tick");
+    }
     router.replace("/game/play");
   };
 

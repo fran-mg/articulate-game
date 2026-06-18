@@ -206,6 +206,7 @@ export default function PlayScreen() {
 
   useForeheadDetector(gameState === "waiting-forehead", () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    playSound("countdown_tick");
     setGameState("countdown");
   });
 
