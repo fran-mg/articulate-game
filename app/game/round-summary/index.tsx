@@ -6,6 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useGameStore } from "../../../stores/useGameStore";
 import { getModeAccent } from "../../../utils/_modeTheme";
 import { useSoundManager } from "../../../hooks/useSoundManager";
+import { useDeckStore } from "../../../stores/useDeckStore";
+import { useAppAlert } from "../../_AppAlert";
+
 import HistoryList from "./_HistoryList";
 import Modals from "./_Modals";
 import ScoreHeader from "./_ScoreHeader";
@@ -13,6 +16,8 @@ import ScoreHeader from "./_ScoreHeader";
 export default function RoundSummaryScreen() {
   const router = useRouter();
   const gameStore = useGameStore();
+  const { showAlert, AlertRender } = useAppAlert(); // Initialize alert
+
   const {
     mode,
     playStyle,
@@ -29,10 +34,8 @@ export default function RoundSummaryScreen() {
   } = gameStore;
 
   const accent = getModeAccent(mode);
-
   const { playSound } = useSoundManager(["click"]);
 
-  // Mid-game edit state — typed to match the selector components
   const [editLimit, setEditLimit] = useState<number | "Infinity">(targetLimit);
   const [editTimer, setEditTimer] = useState<number>(timerDuration);
 
@@ -52,11 +55,26 @@ export default function RoundSummaryScreen() {
 
   const nextEntity = participants[(currentTurnIndex + 1) % participants.length];
 
-  const handleNext = () => {
+  // ── REBUILT: Make async to fetch new shuffled cards per turn
+  const handleNext = async () => {
     playSound("click");
     if (isMatchOver) {
       router.replace("/game/match-summary" as any);
     } else {
+      // 1. Fetch newly shuffled cards based on *current* deck selections
+      await useDeckStore.getState().loadCardsForSelectedDecks();
+      const freshCards = useDeckStore.getState().currentCards;
+
+      // 2. Prevent progression if they unticked all decks in the settings modal
+      if (freshCards.length === 0) {
+        showAlert(
+          "No Decks Selected",
+          "Please open settings (top left) and select at least one deck to continue.",
+        );
+        return;
+      }
+
+      // 3. Update game store with the new shuffled cards for this upcoming turn
       useGameStore.setState((state) => ({
         currentTurnIndex:
           state.currentTurnIndex === participants.length - 1
@@ -66,7 +84,9 @@ export default function RoundSummaryScreen() {
           state.currentTurnIndex === participants.length - 1
             ? state.currentRound + 1
             : state.currentRound,
+        cardsInRound: freshCards,
       }));
+
       router.replace("/game/play" as any);
     }
   };
@@ -92,7 +112,6 @@ export default function RoundSummaryScreen() {
     // Sync local state to clamped values so UI stays consistent
     setEditLimit(newLim);
     setEditTimer(newTimer);
-
     setShowSettingsModal(false);
   };
 
@@ -165,6 +184,9 @@ export default function RoundSummaryScreen() {
         accent={accent}
         handleSaveSettings={handleSaveSettings}
       />
+
+      {/* Render Alert Overlay */}
+      {AlertRender}
     </SafeAreaView>
   );
 }
