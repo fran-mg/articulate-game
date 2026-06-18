@@ -1,4 +1,4 @@
-import db from "./database";
+import { getDb } from "./database";
 import { BUNDLED_DECK_NAME } from "./deckImporter";
 
 // Pulled separately to avoid a circular import (database ← deckMigrations,
@@ -20,7 +20,8 @@ const LEGACY_BUNDLED_DECK_NAMES = [
 ];
 
 export const runMigrations = async (): Promise<void> => {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
   try {
     await removeLegacyBundledDecks();
     await syncBundledDeckMeta();
@@ -32,9 +33,10 @@ export const runMigrations = async (): Promise<void> => {
 // Delete old seeded decks that no longer exist in the bundled JSON.
 // Only touches source = 'bundled' rows so community/AI decks are safe.
 const removeLegacyBundledDecks = async (): Promise<void> => {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
   for (const name of LEGACY_BUNDLED_DECK_NAMES) {
-    await db.runAsync(
+    await database.runAsync(
       "DELETE FROM decks WHERE name = ? AND source = 'bundled';",
       [name],
     );
@@ -44,8 +46,9 @@ const removeLegacyBundledDecks = async (): Promise<void> => {
 // Keep the bundled deck's metadata in sync with the JSON file.
 // Safe to run on every cold start — only fires an UPDATE when something differs.
 const syncBundledDeckMeta = async (): Promise<void> => {
-  if (!db) return;
-  await db.runAsync(
+  const database = getDb();
+  if (!database) return;
+  await database.runAsync(
     `UPDATE decks
      SET icon        = ?,
          color       = ?,

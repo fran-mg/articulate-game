@@ -1,4 +1,4 @@
-import db, { dbHelpers } from "./database";
+import { getDb, dbHelpers } from "./database";
 
 export interface CloudDeckIndexItem {
   id: string;
@@ -52,7 +52,8 @@ export const fetchCloudDecksIndex = async (): Promise<CloudDeckIndexItem[]> => {
 export const syncCommunityDecksMeta = async (
   installedDecks: any[],
 ): Promise<boolean> => {
-  if (!db) return false;
+  const database = getDb();
+  if (!database) return false;
   try {
     const hasPotentialOutdatedDecks = installedDecks.some(
       (d) => d.icon === "CloudDownload" || d.icon === "DownloadCloud",
@@ -124,39 +125,37 @@ export const downloadAndImportDeck = async (
   deckItem: CloudDeckIndexItem,
   installedDecks: any[],
 ): Promise<{ success: boolean; deckName?: string }> => {
-  if (!db) return { success: false };
+  const database = getDb();
+  if (!database) return { success: false };
+
   try {
     const response = await fetch(deckItem.url);
     if (!response.ok) throw new Error("Failed to fetch deck file");
     const deckData = (await response.json()) as CloudDeckFile;
 
-    // Generate versioned name if deck already exists
     const finalDeckName = getVersionedDeckName(deckData.name, installedDecks);
 
-    await db.withTransactionAsync(async () => {
-      const deckId = await dbHelpers.createDeck(
-        finalDeckName,
-        deckItem.category || deckData.category,
-        "community",
-        // Prefer the icon and color from the index item over the raw deck file
-        deckItem.icon || deckData.icon || "CloudDownload",
-        deckItem.color || deckData.color || "#6366f1",
-        deckItem.description || deckData.description || "",
-        deckItem.url || "",
-      );
+    const deckId = await dbHelpers.createDeck(
+      finalDeckName,
+      deckItem.category || deckData.category,
+      "community",
+      deckItem.icon || deckData.icon || "CloudDownload",
+      deckItem.color || deckData.color || "#6366f1",
+      deckItem.description || deckData.description || "",
+      deckItem.url || "",
+    );
 
-      if (deckId && deckData.cards) {
-        for (const card of deckData.cards) {
-          await dbHelpers.createCard(
-            deckId,
-            card.word,
-            card.tabooWords,
-            card.charadesHint ?? "",
-            card.passwordHint ?? "",
-          );
-        }
+    if (deckId && deckData.cards) {
+      for (const card of deckData.cards) {
+        await dbHelpers.createCard(
+          deckId,
+          card.word,
+          card.tabooWords,
+          card.charadesHint ?? "",
+          card.passwordHint ?? "",
+        );
       }
-    });
+    }
 
     return { success: true, deckName: finalDeckName };
   } catch (error) {

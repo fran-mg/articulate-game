@@ -1,4 +1,4 @@
-import db, { dbHelpers } from "./database";
+import { getDb, dbHelpers } from "./database";
 
 const GENERAL_DECK = require("../assets/decks/general_deck.json") as DeckJson;
 
@@ -28,35 +28,38 @@ interface DeckJson {
 // ── Seed ──────────────────────────────────────────────────────────────────────
 
 export const seedStarterDecksIfEmpty = async (): Promise<void> => {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
+
   try {
-    const rows = await db.getAllAsync("SELECT COUNT(*) as count FROM decks;");
+    const rows = await database.getAllAsync(
+      "SELECT COUNT(*) as count FROM decks;",
+    );
     const count = (rows[0] as { count: number }).count;
 
     if (count > 0) return;
 
-    await db.withTransactionAsync(async () => {
-      const deckId = await dbHelpers.createDeck(
-        GENERAL_DECK.name,
-        GENERAL_DECK.category,
-        "bundled",
-        GENERAL_DECK.icon,
-        GENERAL_DECK.color,
-        GENERAL_DECK.description,
+    // 3. REMOVED withTransactionAsync for Web stability
+    const deckId = await dbHelpers.createDeck(
+      GENERAL_DECK.name,
+      GENERAL_DECK.category,
+      "bundled",
+      GENERAL_DECK.icon,
+      GENERAL_DECK.color,
+      GENERAL_DECK.description,
+    );
+
+    if (!deckId) return;
+
+    for (const card of GENERAL_DECK.cards) {
+      await dbHelpers.createCard(
+        deckId,
+        card.word,
+        card.tabooWords,
+        card.charadesHint ?? "",
+        card.passwordHint ?? "",
       );
-
-      if (!deckId) return;
-
-      for (const card of GENERAL_DECK.cards) {
-        await dbHelpers.createCard(
-          deckId,
-          card.word,
-          card.tabooWords,
-          card.charadesHint ?? "",
-          card.passwordHint ?? "",
-        );
-      }
-    });
+    }
 
     console.log(
       `Seeded "${GENERAL_DECK.name}" — ${GENERAL_DECK.cards.length} cards.`,

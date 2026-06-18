@@ -1,16 +1,20 @@
 import * as SQLite from "expo-sqlite";
 import { Platform } from "react-native";
 
-const DB_NAME = "articulate_v5.db"; // bumped — schema changes to cards table
+const DB_NAME = "articulate_v5.db";
 
 let db: SQLite.SQLiteDatabase | null = null;
-if (Platform.OS !== "web") {
-  db = SQLite.openDatabaseSync(DB_NAME);
-}
+
+export const getDb = () => db;
 
 export const initDatabase = async (): Promise<void> => {
-  if (!db) return;
   try {
+    // Await the DB opening so WebAssembly has time to load on the web
+    // works perfectly on Android too.
+    if (!db) {
+      db = await SQLite.openDatabaseAsync(DB_NAME);
+    }
+
     await db.execAsync("PRAGMA foreign_keys = ON;");
     await db.execAsync("PRAGMA journal_mode = WAL;");
 
