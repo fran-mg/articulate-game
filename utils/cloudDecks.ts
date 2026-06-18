@@ -1,4 +1,4 @@
-import { getDb, dbHelpers } from "./database";
+import { getDb, dbHelpers, initDatabase } from "./database";
 
 export interface CloudDeckIndexItem {
   id: string;
@@ -38,7 +38,9 @@ const INDEX_URL =
 
 export const fetchCloudDecksIndex = async (): Promise<CloudDeckIndexItem[]> => {
   try {
-    const response = await fetch(INDEX_URL);
+    const response = await fetch(`${INDEX_URL}?t=${new Date().getTime()}`, {
+      cache: "no-store",
+    });
     if (!response.ok) throw new Error("Network response was not ok");
     const data = await response.json();
     return data.decks || [];
@@ -124,15 +126,51 @@ const getVersionedDeckName = (
 export const downloadAndImportDeck = async (
   deckItem: CloudDeckIndexItem,
   installedDecks: any[],
-): Promise<{ success: boolean; deckName?: string }> => {
-  const database = getDb();
-  if (!database) return { success: false };
+): Promise<{ success: boolean; deckName?: string; errorMsg?: string }> => {
+  let database = getDb();
+
+  // If the PWA put the DB to sleep, forcefully wake it up
+  if (!database) {
+    try {
+      await initDatabase();
+      database = getDb();
+    } catch (e: any) {
+      const errMsg = e.message || String(e);
+
+      // Provide a clear alert if they have multiple tabs open
+      if (errMsg.includes("Invalid VFS state")) {
+        return {
+          success: false,
+          errorMsg:
+            "The app is open in another tab. Please close duplicate instances/tabs, reload and try again.",
+        };
+      }
+
+      return {
+        success: false,
+        errorMsg: `DB Crash: ${errMsg}`,
+      };
+    }
+  }
+
+  if (!database) {
+    return { success: false, errorMsg: "Database is unreachable." };
+  }
 
   try {
-    const response = await fetch(deckItem.url);
-    if (!response.ok) throw new Error("Failed to fetch deck file");
-    const deckData = (await response.json()) as CloudDeckFile;
+    // Force a cache-bust to prevent strict PWA cache blocking
+    const response = await fetch(`${deckItem.url}?t=${new Date().getTime()}`, {
+      cache: "no-store",
+    });
 
+    if (!response.ok) {
+      return {
+        success: false,
+        errorMsg: `Server returned HTTP ${response.status}`,
+      };
+    }
+
+    const deckData = (await response.json()) as CloudDeckFile;
     const finalDeckName = getVersionedDeckName(deckData.name, installedDecks);
 
     const deckId = await dbHelpers.createDeck(
@@ -158,11 +196,12 @@ export const downloadAndImportDeck = async (
     }
 
     return { success: true, deckName: finalDeckName };
-  } catch (error) {
-    console.error(
-      `Failed to download and import deck ${deckItem.name}:`,
-      error,
-    );
-    return { success: false };
+  } catch (error: any) {
+    console.error(`Failed to download deck:`, error);
+    // Return the actual error string so the UI can show it to us!
+    return {
+      success: false,
+      errorMsg: error.message || "Unknown network error.",
+    };
   }
 };

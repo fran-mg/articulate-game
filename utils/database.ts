@@ -1,154 +1,166 @@
 import * as SQLite from "expo-sqlite";
 import { Platform } from "react-native";
 
-const DB_NAME = "articulate_v5.db";
+const DB_NAME = "articulate_v6.db";
 
 let db: SQLite.SQLiteDatabase | null = null;
+let initPromise: Promise<void> | null = null; // Add a promise lock tracker
 
 export const getDb = () => db;
 
 export const initDatabase = async (): Promise<void> => {
-  try {
-    // Await the DB opening so WebAssembly has time to load on the web
-    // works perfectly on Android too.
-    if (!db) {
-      db = await SQLite.openDatabaseAsync(DB_NAME);
-    }
-
-    await db.execAsync("PRAGMA foreign_keys = ON;");
-    await db.execAsync("PRAGMA journal_mode = WAL;");
-
-    const createQueries = [
-      // ── DECKS ──────────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS decks (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        name           TEXT    NOT NULL,
-        category       TEXT,
-        source         TEXT    DEFAULT 'bundled',
-        description    TEXT    DEFAULT '',
-        icon           TEXT    DEFAULT 'Layers',
-        color          TEXT    DEFAULT '#6366f1',
-        url            TEXT    DEFAULT '',
-        created_at     INTEGER DEFAULT (strftime('%s', 'now')),
-        updated_at     INTEGER DEFAULT (strftime('%s', 'now')),
-        is_favorited   INTEGER DEFAULT 0,
-        download_count INTEGER DEFAULT 0,
-        card_count     INTEGER DEFAULT 0
-      );`,
-
-      // ── CARDS ──────────────────────────────────────────────────────────────
-      // Column names now match the JSON format exactly:
-      //   taboo_words  → tabooWords (stored as JSON array string)
-      //   hint         → split into charades_hint + password_hint
-      //   difficulty   removed from card level (lives on the deck)
-      `CREATE TABLE IF NOT EXISTS cards (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        deck_id         INTEGER NOT NULL,
-        word            TEXT    NOT NULL,
-        taboo_words     TEXT,
-        chardes_hint    TEXT    DEFAULT '',
-        password_hint   TEXT    DEFAULT '',
-        is_hidden       INTEGER DEFAULT 0,
-        times_played    INTEGER DEFAULT 0,
-        times_guessed   INTEGER DEFAULT 0,
-        created_at      INTEGER DEFAULT (strftime('%s', 'now')),
-        FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
-      );`,
-
-      // ── GAME MODES ─────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS game_modes (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        name         TEXT    NOT NULL UNIQUE,
-        display_name TEXT    NOT NULL,
-        description  TEXT,
-        rules        TEXT,
-        icon         TEXT,
-        is_enabled   INTEGER DEFAULT 1
-      );`,
-
-      // ── GAMES ──────────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS games (
-        id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-        mode_id                INTEGER NOT NULL,
-        play_style             TEXT    NOT NULL DEFAULT 'team',
-        status                 TEXT    DEFAULT 'active',
-        started_at             INTEGER DEFAULT (strftime('%s', 'now')),
-        ended_at               INTEGER,
-        total_rounds           INTEGER DEFAULT 0,
-        winning_participant_id INTEGER,
-        participants_snapshot  TEXT    NOT NULL DEFAULT '[]',
-        settings               TEXT,
-        FOREIGN KEY (mode_id) REFERENCES game_modes(id)
-      );`,
-
-      // ── ROUNDS ─────────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS rounds (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        game_id         INTEGER NOT NULL,
-        round_number    INTEGER NOT NULL,
-        participant_id  INTEGER NOT NULL,
-        started_at      INTEGER DEFAULT (strftime('%s', 'now')),
-        ended_at        INTEGER,
-        cards_attempted INTEGER DEFAULT 0,
-        cards_guessed   INTEGER DEFAULT 0,
-        cards_passed    INTEGER DEFAULT 0,
-        score           INTEGER DEFAULT 0,
-        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-      );`,
-
-      // ── ROUND CARDS ────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS round_cards (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        round_id   INTEGER NOT NULL,
-        card_id    INTEGER NOT NULL,
-        result     TEXT,
-        time_spent INTEGER,
-        timestamp  INTEGER DEFAULT (strftime('%s', 'now')),
-        FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
-        FOREIGN KEY (card_id)  REFERENCES cards(id)
-      );`,
-
-      // ── SELECTED DECKS ─────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS selected_decks (
-        deck_id     INTEGER PRIMARY KEY,
-        selected_at INTEGER DEFAULT (strftime('%s', 'now')),
-        FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
-      );`,
-
-      // ── BOARD STATE ────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS board_state (
-        id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-        game_id                INTEGER NOT NULL UNIQUE,
-        board_size             INTEGER DEFAULT 48,
-        current_tile           INTEGER DEFAULT 0,
-        current_participant_id INTEGER,
-        tile_categories        TEXT,
-        participant_positions  TEXT    NOT NULL DEFAULT '{}',
-        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
-      );`,
-
-      // ── SETTINGS ───────────────────────────────────────────────────────────
-      `CREATE TABLE IF NOT EXISTS settings (
-        key        TEXT    PRIMARY KEY,
-        value      TEXT    NOT NULL,
-        updated_at INTEGER DEFAULT (strftime('%s', 'now'))
-      );`,
-
-      // ── INDICES ────────────────────────────────────────────────────────────
-      `CREATE INDEX IF NOT EXISTS idx_cards_deck_id  ON cards(deck_id);`,
-      `CREATE INDEX IF NOT EXISTS idx_cards_hidden   ON cards(is_hidden);`,
-      `CREATE INDEX IF NOT EXISTS idx_rounds_game_id ON rounds(game_id);`,
-    ];
-
-    for (const query of createQueries) {
-      await db.execAsync(query);
-    }
-
-    await seedInitialData();
-  } catch (error) {
-    console.error("Database initialization error:", error);
-    throw error;
+  // If already initializing or finished, return the existing promise
+  if (initPromise) {
+    return initPromise;
   }
+
+  initPromise = (async () => {
+    try {
+      if (!db) {
+        db = await SQLite.openDatabaseAsync(DB_NAME);
+      }
+
+      await db.execAsync("PRAGMA foreign_keys = ON;");
+      if (Platform.OS !== "web") {
+        await db.execAsync("PRAGMA journal_mode = WAL;");
+      }
+
+      const createQueries = [
+        // ── DECKS ──────────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS decks (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          name           TEXT    NOT NULL,
+          category       TEXT,
+          source         TEXT    DEFAULT 'bundled',
+          description    TEXT    DEFAULT '',
+          icon           TEXT    DEFAULT 'Layers',
+          color          TEXT    DEFAULT '#6366f1',
+          url            TEXT    DEFAULT '',
+          created_at     INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at     INTEGER DEFAULT (strftime('%s', 'now')),
+          is_favorited   INTEGER DEFAULT 0,
+          download_count INTEGER DEFAULT 0,
+          card_count     INTEGER DEFAULT 0
+        );`,
+
+        // ── CARDS ──────────────────────────────────────────────────────────────
+        // Column names now match the JSON format exactly:
+        //   taboo_words  → tabooWords (stored as JSON array string)
+        //   hint         → split into charades_hint + password_hint
+        //   difficulty   removed from card level (lives on the deck)
+        `CREATE TABLE IF NOT EXISTS cards (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          deck_id         INTEGER NOT NULL,
+          word            TEXT    NOT NULL,
+          taboo_words     TEXT,
+          chardes_hint    TEXT    DEFAULT '',
+          password_hint   TEXT    DEFAULT '',
+          is_hidden       INTEGER DEFAULT 0,
+          times_played    INTEGER DEFAULT 0,
+          times_guessed   INTEGER DEFAULT 0,
+          created_at      INTEGER DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
+        );`,
+
+        // ── GAME MODES ─────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS game_modes (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          name         TEXT    NOT NULL UNIQUE,
+          display_name TEXT    NOT NULL,
+          description  TEXT,
+          rules        TEXT,
+          icon         TEXT,
+          is_enabled   INTEGER DEFAULT 1
+        );`,
+
+        // ── GAMES ──────────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS games (
+          id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+          mode_id                INTEGER NOT NULL,
+          play_style             TEXT    NOT NULL DEFAULT 'team',
+          status                 TEXT    DEFAULT 'active',
+          started_at             INTEGER DEFAULT (strftime('%s', 'now')),
+          ended_at               INTEGER,
+          total_rounds           INTEGER DEFAULT 0,
+          winning_participant_id INTEGER,
+          participants_snapshot  TEXT    NOT NULL DEFAULT '[]',
+          settings               TEXT,
+          FOREIGN KEY (mode_id) REFERENCES game_modes(id)
+        );`,
+
+        // ── ROUNDS ─────────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS rounds (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_id         INTEGER NOT NULL,
+          round_number    INTEGER NOT NULL,
+          participant_id  INTEGER NOT NULL,
+          started_at      INTEGER DEFAULT (strftime('%s', 'now')),
+          ended_at        INTEGER,
+          cards_attempted INTEGER DEFAULT 0,
+          cards_guessed   INTEGER DEFAULT 0,
+          cards_passed    INTEGER DEFAULT 0,
+          score           INTEGER DEFAULT 0,
+          FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+        );`,
+
+        // ── ROUND CARDS ────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS round_cards (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          round_id   INTEGER NOT NULL,
+          card_id    INTEGER NOT NULL,
+          result     TEXT,
+          time_spent INTEGER,
+          timestamp  INTEGER DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
+          FOREIGN KEY (card_id)  REFERENCES cards(id)
+        );`,
+
+        // ── SELECTED DECKS ─────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS selected_decks (
+          deck_id     INTEGER PRIMARY KEY,
+          selected_at INTEGER DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE
+        );`,
+
+        // ── BOARD STATE ────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS board_state (
+          id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+          game_id                INTEGER NOT NULL UNIQUE,
+          board_size             INTEGER DEFAULT 48,
+          current_tile           INTEGER DEFAULT 0,
+          current_participant_id INTEGER,
+          tile_categories        TEXT,
+          participant_positions  TEXT    NOT NULL DEFAULT '{}',
+          FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+        );`,
+
+        // ── SETTINGS ───────────────────────────────────────────────────────────
+        `CREATE TABLE IF NOT EXISTS settings (
+          key        TEXT    PRIMARY KEY,
+          value      TEXT    NOT NULL,
+          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );`,
+
+        // ── INDICES ────────────────────────────────────────────────────────────
+        `CREATE INDEX IF NOT EXISTS idx_cards_deck_id  ON cards(deck_id);`,
+        `CREATE INDEX IF NOT EXISTS idx_cards_hidden   ON cards(is_hidden);`,
+        `CREATE INDEX IF NOT EXISTS idx_rounds_game_id ON rounds(game_id);`,
+      ];
+
+      for (const query of createQueries) {
+        await db.execAsync(query);
+      }
+
+      await seedInitialData();
+    } catch (error) {
+      db = null; // If it fails, clear it so we can try again
+      initPromise = null; // Clear the promise so the app can retry later if it failed
+      console.error("Database initialization error:", error);
+      throw error;
+    }
+  })();
+
+  return initPromise;
 };
 
 // ─── SEED ─────────────────────────────────────────────────────────────────────

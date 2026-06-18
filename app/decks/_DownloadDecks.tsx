@@ -89,7 +89,7 @@ export default function CloudDecksModal({
           : `Downloaded as "${result.deckName}".`;
       showAlert("Downloaded!", message);
     } else {
-      showAlert("Download Failed", "Something went wrong. Please try again.");
+      showAlert("Download Failed", result.errorMsg || "Something went wrong.");
     }
   };
 

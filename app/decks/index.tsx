@@ -7,6 +7,7 @@ import { generateDeckViaAI } from "../../utils/aiGenerator";
 import { seedStarterDecksIfEmpty } from "../../utils/deckImporter";
 import { Deck } from "../../stores/useDeckStore";
 import { syncCommunityDecksMeta } from "../../utils/cloudDecks";
+import { initDatabase } from "../../utils/database";
 import { useAppAlert } from "../_AppAlert";
 
 import AIForgeCard from "./_AIForgeCard";
@@ -32,6 +33,13 @@ export default function DecksScreen() {
   }, []);
 
   const initDeckFlow = async () => {
+    try {
+      // Force the screen to wait for WebAssembly SQLite to finish setting up
+      await initDatabase();
+    } catch (e) {
+      console.warn("DB failed to initialize:", e);
+    }
+
     await seedStarterDecksIfEmpty();
     await loadDecks();
 

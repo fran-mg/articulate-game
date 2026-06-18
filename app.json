@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "rumble",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#14142a"
-    },
     "updates": {
       "url": "https://u.expo.dev/4c0d85f3-ad84-4304-9f39-8bc53b61f53f"
     },
@@ -40,7 +35,15 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "display": "standalone",
+      "themeColor": "#020617",
+      "backgroundColor": "#020617",
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#14142a"
+      }
     },
     "plugins": [
       "expo-router",
