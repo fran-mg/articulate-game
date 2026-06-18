@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import * as LucideIcons from "lucide-react-native";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -9,10 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { ScoringStyle } from "../../../stores/useGameStore";
+import { useDeckStore } from "../../../stores/useDeckStore";
+import { Participant, ScoringStyle } from "../../../stores/useGameStore";
 import { ModeAccent } from "../../../utils/_modeTheme";
 import TargetLimitInput from "../settings/_TargetLimitInput";
+import DeckSelector from "../settings/_DeckSelector";
 import TimerSelector from "../settings/_TimerSelector";
+import { useRosterStore } from "@/stores/useRosterStore";
 
 interface ModalsProps {
   showExitModal: boolean;
@@ -44,6 +47,30 @@ export default function Modals({
   handleSaveSettings,
 }: ModalsProps) {
   const router = useRouter();
+
+  const {
+    decks,
+    selectedDeckIds,
+    loadDecks,
+    toggleDeckSelection,
+    selectAllDecks,
+  } = useDeckStore();
+
+  const { initRoster } = useRosterStore();
+  const cachedTeamsRef = useRef<Participant[] | null>(null);
+  const cachedSolosRef = useRef<Participant[] | null>(null);
+  useEffect(() => {
+    const init = async () => {
+      await loadDecks();
+      selectAllDecks();
+    };
+    init();
+    initRoster("team");
+    cachedTeamsRef.current = null;
+    cachedSolosRef.current = null;
+  }, []);
+
+  const [isDecksExpanded, setIsDecksExpanded] = useState(false);
 
   return (
     <>
@@ -137,6 +164,15 @@ export default function Modals({
                   }
                 />
               </View>
+
+              <DeckSelector
+                decks={decks}
+                selectedDeckIds={selectedDeckIds}
+                isDecksExpanded={isDecksExpanded}
+                setIsDecksExpanded={setIsDecksExpanded}
+                toggleDeckSelection={toggleDeckSelection}
+                accent={accent}
+              />
 
               {/* Timer selector */}
               <TimerSelector
