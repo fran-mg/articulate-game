@@ -6,11 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
-import {
-  RenderItemParams,
-  ScaleDecorator,
-} from "react-native-draggable-flatlist";
+import { RenderItemParams } from "react-native-draggable-flatlist";
+import { ScaleDecorator } from "../../../components/universal/DraggableFlatListProxy";
 import { PlayStyle } from "../../../stores/useGameStore";
 import { Participant } from "../../../utils/database";
 
@@ -23,6 +22,10 @@ export interface ParticipantItemProps extends RenderItemParams<Participant> {
   onConfirmEdit: () => void;
   onCancelEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 export default function ParticipantItem({
@@ -37,9 +40,14 @@ export default function ParticipantItem({
   onConfirmEdit,
   onCancelEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: ParticipantItemProps) {
   const isEditing = editingId === item.id;
   const isTeam = item.type === "team";
+  const isWeb = Platform.OS === "web";
 
   return (
     <ScaleDecorator activeScale={0.95}>
@@ -63,19 +71,41 @@ export default function ParticipantItem({
           },
         ]}
       >
-        {/* Drag handle */}
-        <TouchableOpacity
-          onPressIn={drag}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 40 }}
-          style={styles.dragHandle}
-          disabled={isEditing}
-        >
-          <LucideIcons.GripVertical
-            color={isEditing ? "#1e293b" : "#334155"}
-            size={18}
-            strokeWidth={2}
-          />
-        </TouchableOpacity>
+        {/* NATIVE DRAG HANDLE (Hidden on Web) */}
+        {!isWeb && (
+          <TouchableOpacity
+            onPressIn={drag}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 40 }}
+            style={styles.dragHandle}
+            disabled={isEditing}
+          >
+            <LucideIcons.GripVertical
+              color={isEditing ? "#1e293b" : "#334155"}
+              size={18}
+              strokeWidth={2}
+            />
+          </TouchableOpacity>
+        )}
+
+        {/* WEB UP/DOWN ARROWS (Hidden on Android) */}
+        {isWeb && !isEditing && (
+          <View style={{ paddingRight: 10, alignItems: "center", gap: 4 }}>
+            <TouchableOpacity
+              onPress={onMoveUp}
+              disabled={isFirst}
+              style={{ opacity: isFirst ? 0.2 : 1 }}
+            >
+              <LucideIcons.ChevronUp color="#94a3b8" size={18} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onMoveDown}
+              disabled={isLast}
+              style={{ opacity: isLast ? 0.2 : 1 }}
+            >
+              <LucideIcons.ChevronDown color="#94a3b8" size={18} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Color swatch */}
         <View style={[styles.colorSwatch, { backgroundColor: item.color }]} />

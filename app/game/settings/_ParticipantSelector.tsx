@@ -1,11 +1,11 @@
 import * as LucideIcons from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { RenderItemParams } from "react-native-draggable-flatlist";
 import {
   NestableDraggableFlatList,
-  RenderItemParams,
-  ScaleDecorator, // Added this import
-} from "react-native-draggable-flatlist";
+  ScaleDecorator,
+} from "../../../components/universal/DraggableFlatListProxy";
 import { PlayStyle } from "../../../stores/useGameStore";
 import { useRosterStore } from "../../../stores/useRosterStore";
 import { ModeAccent } from "../../../utils/_modeTheme";
@@ -122,23 +122,43 @@ export default function ParticipantSelector({
     }, 50);
   };
 
+  // Custom logic to move items on the web
+  const handleMove = (index: number, direction: -1 | 1) => {
+    const newParticipants = [...participants];
+    const targetIndex = index + direction;
+    // Swap the elements
+    [newParticipants[index], newParticipants[targetIndex]] = [
+      newParticipants[targetIndex],
+      newParticipants[index],
+    ];
+    reorderParticipants(newParticipants);
+  };
+
   // Wrapped the custom component in ScaleDecorator so DraggableFlatList
   // has a Native Component to hook its measurements onto.
-  const renderItem = (params: RenderItemParams<Participant>) => (
-    <ScaleDecorator>
-      <ParticipantItem
-        {...params}
-        playStyle={playStyle}
-        editingId={editingId}
-        editName={editName}
-        onEditNameChange={setEditName}
-        onBeginEdit={handleBeginEdit}
-        onConfirmEdit={handleConfirmEdit}
-        onCancelEdit={handleCancelEdit}
-        onDelete={handleDelete}
-      />
-    </ScaleDecorator>
-  );
+  const renderItem = (params: RenderItemParams<Participant>) => {
+    const index = participants.findIndex((p) => p.id === params.item.id);
+
+    return (
+      <ScaleDecorator>
+        <ParticipantItem
+          {...params}
+          playStyle={playStyle}
+          editingId={editingId}
+          editName={editName}
+          onEditNameChange={setEditName}
+          onBeginEdit={handleBeginEdit}
+          onConfirmEdit={handleConfirmEdit}
+          onCancelEdit={handleCancelEdit}
+          onDelete={handleDelete}
+          onMoveUp={() => handleMove(index, -1)}
+          onMoveDown={() => handleMove(index, 1)}
+          isFirst={index === 0}
+          isLast={index === participants.length - 1}
+        />
+      </ScaleDecorator>
+    );
+  };
 
   return (
     <View
@@ -222,9 +242,9 @@ export default function ParticipantSelector({
       <View style={styles.listBody}>
         <NestableDraggableFlatList
           data={participants}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item: Participant) => String(item.id)}
           renderItem={renderItem}
-          onDragEnd={({ data }) => reorderParticipants(data)}
+          onDragEnd={({ data }: any) => reorderParticipants(data)}
           activationDistance={8}
         />
       </View>

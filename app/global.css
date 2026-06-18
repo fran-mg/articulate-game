@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Lock the web viewport to prevent mobile browser address bar bouncing */
+html,
+body,
+#root {
+  height: 100dvh; /* Dynamic viewport height handles Safari's address bar */
+  width: 100vw;
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior: none; /* Stops the elastic pull-to-refresh bounce */
+}
