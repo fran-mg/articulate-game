@@ -3,7 +3,10 @@
 <table>
   <tr>
     <td align="left" valign="top" width="25%">
-      <p>Rumble! is a mobile party game application designed for local multiplayer gaming. Built from the ground up for React Native and Expo, the app brings high-energy group dynamics directly to iOS and Android devices without the limitations of a web wrapper. Rumble! combines the core mechanics of popular party games like Heads Up, Catchphrase, and Taboo into a single fluid experience.</p>
+      <img src="./assets/images/readme-icon-2.png" width="420" alt="Rumble App Icon" />
+    </td>
+    <td align="left" valign="middle"">
+      <p><b>Rumble!</b> is a mobile party game application designed for local multiplayer gaming. Built from the ground up for React Native and Expo, the app brings high-energy group dynamics directly to iOS and Android devices without the limitations of a web wrapper. Rumble! combines the core mechanics of popular party games like Heads Up, Catchphrase, and Taboo into a single fluid experience.</p>
       <p>Players can interact natively using device tilt sensors to pass or score, or use large, high-contrast touch buttons. The app is engineered for quick social setups, featuring robust team management, live scoring, and an open content model that allows hosts to customize, merge, or dynamically pull in new word decks on the fly.</p>
       <h3>Core Gameplay & Architecture</h3>
       <ul>
@@ -12,9 +15,6 @@
         <li><b>Dynamic Deck Management</b>: Modify existing card sets, hide specific words, add custom text entries, or select and shuffle multiple expansion packs into a single session.</li>
         <li><b>Automated Expansion</b>: Pull downstream pack updates directly via Git repository synchronization or generate localized word categories instantly based on user input.</li>
       </ul>
-    </td>
-    <td align="left" valign="middle" width="35%">
-      <img src="./assets/images/adaptive-icon.png" width="420" alt="Rumble App Icon" />
     </td>
   </tr>
 </table>
@@ -31,39 +31,25 @@
 
 ## Live Release & Instant Updates
 
-### Method 1: Compact Cloud Access Badge
+## Live Release & Instant Updates
 
-Click the badge below to jump directly to the live dashboard web view to check build release history, individual platform tags, and version parameters:
+### Method 1: Play Directly in Your Browser (iOS & Android)
 
-[![EAS Preview Update](https://img.shields.io/badge/EAS_Preview-Live-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/accounts/fran-mg/projects/rumble-game/updates)
+You can play the game instantly without downloading any external apps or using an App Store. The web version is optimized to run completely full-screen, providing a native app experience on your phone.
 
----
+**Production URL:** [https://rumble-game.expo.app](https://rumble-game.expo.app)
 
-### Method 2: Embedded QR Code Sandbox
+### How to install on your Home Screen:
 
-Scan the system matrix below using your native camera hardware or mobile testing environment to launch the active JavaScript runtime instance immediately.
+1. Open the production link above on your mobile browser.
+2. **On iOS (Safari):** Tap the **Share** button (square with an up arrow) and select **Add to Home Screen**.
+3. **On Android (Chrome):** Tap the **Three Dots** menu icon and select **Add to Home screen** or **Install App**.
 
-<table>
-  <tr>
-    <td align="center">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=exp://u.expo.dev/4c0d85f3-ad84-4304-9f39-8bc53b61f53f?channel-name=preview" width="250" alt="Expo Go QR Code" /><br />
-      <sub><b>Scan with Expo Go / Native Camera</b></sub>
-    </td>
-    <td>
-      <h3>How to run this build:</h3>
-      <ol>
-        <li>Download and install the official <a href="https://expo.dev/client">Expo Go App</a> onto your iOS or Android mobile device.</li>
-        <li>Open your device camera or the Expo Go interface and scan the interactive QR matrix shown on the left.</li>
-        <li>The system will automatically download the remote JavaScript runtime bundle stream and boot up the live environment.</li>
-      </ol>
-      <p>🌐 <i>To review the deployment timeline or read specific version history logs, inspect the public <a href="https://expo.dev/accounts/fran-mg/projects/rumble-game/updates">EAS Update Cloud Dashboard</a>.</i></p>
-    </td>
-  </tr>
-</table>
+_This will place a clean app icon on your device home screen, hide the browser address bar, and launch the game in full-screen mode just like a native app._
 
 ---
 
-### Method 3: APK Download for Android
+### Method 2: APK Download for Android
 
 Download the pre-compiled `Rumble.apk` file directly from this repository's root directory to install the native application shell manually on your Android hardware.
 
