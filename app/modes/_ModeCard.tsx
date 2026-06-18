@@ -1,32 +1,62 @@
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StyleProp,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from "react-native";
 import { useSoundManager } from "../../hooks/useSoundManager";
 import { getModeTheme } from "../../utils/_modeTheme";
 
 interface ModeCardProps {
   modeKey: string;
-  onPress: () => void;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
+  variant?: "default" | "soft"; // ── NEW: allows toggling visual style
 }
 
-export default function ModeCard({ modeKey, onPress }: ModeCardProps) {
+export default function ModeCard({
+  modeKey,
+  onPress,
+  style,
+  variant = "default",
+}: ModeCardProps) {
   const { accent, meta } = getModeTheme(modeKey);
   const Icon = meta.Icon;
+  const isSoft = variant === "soft";
 
   const { playSound } = useSoundManager(["click"]);
 
   const handlePress = () => {
-    playSound("click");
-    onPress();
+    if (onPress) {
+      playSound("click");
+      onPress();
+    }
   };
 
-  return (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      onPress={handlePress}
-      style={[styles.card, { borderLeftColor: accent.color }]}
-    >
-      <View style={[styles.cardGlow, { backgroundColor: accent.colorBg }]} />
+  const InnerContent = (
+    <>
+      {/* ── BACKGROUND EFFECTS ── */}
+      {!isSoft ? (
+        // DEFAULT: Strong glow in bottom right corner
+        <View style={[styles.cardGlow, { backgroundColor: accent.colorBg }]} />
+      ) : (
+        // SOFT: Linear gradient wash + top semi-transparent shine
+        <>
+          <View style={styles.cardShine} pointerEvents="none" />
+          <LinearGradient
+            colors={[accent.colorBg, "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </>
+      )}
 
+      {/* ── SHARED CONTENT STRUCTURE (Exact same layout for both) ── */}
       <View
         style={[
           styles.iconWrap,
@@ -41,7 +71,9 @@ export default function ModeCard({ modeKey, onPress }: ModeCardProps) {
 
       <View style={styles.textBlock}>
         <View style={styles.titleStrip}>
-          <Text style={styles.title}>{meta.label}</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {meta.label}
+          </Text>
           <View
             style={[
               styles.badge,
@@ -58,28 +90,60 @@ export default function ModeCard({ modeKey, onPress }: ModeCardProps) {
         </View>
         <Text style={styles.description}>{meta.description}</Text>
       </View>
-    </TouchableOpacity>
+    </>
   );
+
+  const cardStyles = [
+    styles.baseCard,
+    isSoft ? styles.softCard : styles.defaultCard,
+    !isSoft && { borderLeftColor: accent.color }, // Only default gets the thick border
+    isSoft && { borderColor: accent.colorBorder }, // Soft gets the accent border all around
+    style,
+  ];
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={handlePress}
+        style={cardStyles}
+      >
+        {InnerContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={cardStyles}>{InnerContent}</View>;
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#0f172a",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    borderLeftWidth: 4,
+  // Shared spacing constraints
+  baseCard: {
     borderRadius: 20,
     padding: 18,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     overflow: "hidden",
+  },
+  // Dark punchy style (Home page)
+  defaultCard: {
+    backgroundColor: "#0f172a",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    borderLeftWidth: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 6,
   },
+  // Softer gradient style (Settings page)
+  softCard: {
+    backgroundColor: "rgba(255,255,255,0.02)",
+    borderWidth: 1,
+  },
+  // Background effect layers
   cardGlow: {
     position: "absolute",
     right: -24,
@@ -88,6 +152,18 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
   },
+  cardShine: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "50%",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 1,
+  },
+  // Inner elements
   iconWrap: {
     width: 46,
     height: 46,
@@ -96,10 +172,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    zIndex: 2,
   },
   textBlock: {
     flex: 1,
-    paddingRight: 48,
+    paddingRight: 8,
+    zIndex: 2,
   },
   titleStrip: {
     flexDirection: "row",
@@ -112,6 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "900",
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
   description: {
     color: "#64748b",
@@ -124,6 +203,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
+    flexShrink: 0,
   },
   badgeText: {
     fontSize: 9,

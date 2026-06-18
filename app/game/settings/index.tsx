@@ -19,22 +19,20 @@ import {
   useGameStore,
 } from "../../../stores/useGameStore";
 import { useRosterStore } from "../../../stores/useRosterStore";
-import { getModeAccent, getModeMeta } from "../../../utils/_modeTheme";
+import { getModeAccent } from "../../../utils/_modeTheme";
 import { Participant } from "../../../utils/database";
 import DeckSelector from "./_DeckSelector";
 import ParticipantSelector from "./_ParticipantSelector";
 import RoundsSelector from "./_RoundsSelector";
 import TimerSelector from "./_TimerSelector";
 import { useAppAlert } from "../../_AppAlert";
+import ModeCard from "../../modes/_ModeCard";
 
 export default function SettingsScreen() {
   const params = useLocalSearchParams();
   const [selectedMode] = useState(() => (params.mode as any) || "articulate");
 
   const accent = getModeAccent(selectedMode);
-  const meta = getModeMeta(selectedMode);
-  const ModeIcon = meta.Icon;
-
   const gameStore = useGameStore();
   const { participants, initRoster } = useRosterStore();
   const { showAlert, AlertRender } = useAppAlert();
@@ -45,7 +43,7 @@ export default function SettingsScreen() {
 
   const [scoringStyle, setScoringStyle] = useState<ScoringStyle>("rounds");
   const [targetLimit, setTargetLimit] = useState<number | "Infinity">(3);
-  const [playStyle, setPlayStyle] = useState<PlayStyle>("just_play");
+  const [playStyle, setPlayStyle] = useState<PlayStyle>("team");
   const [timerDuration, setTimerDuration] = useState(60);
   const [isDecksExpanded, setIsDecksExpanded] = useState(true);
 
@@ -87,16 +85,15 @@ export default function SettingsScreen() {
       return;
     }
 
-    // Pass the active participants based on mode
     const finalParticipants =
       playStyle === "just_play"
         ? participants
         : participants.filter((p) => p.name.trim().length > 0);
 
-    if (playStyle !== "just_play" && finalParticipants.length < 2) {
+    if (playStyle !== "just_play" && finalParticipants.length < 1) {
       showAlert(
         "Not enough participants",
-        `You need at least 2 ${playStyle === "team" ? "teams" : "players"}.`,
+        `You need at least 1 ${playStyle === "team" ? "team" : "player"}.`,
       );
       return;
     }
@@ -150,32 +147,13 @@ export default function SettingsScreen() {
                   strokeWidth={2.5}
                 />
               </TouchableOpacity>
-              <View
-                style={[styles.modeCard, { borderColor: accent.colorBorder }]}
-              >
-                <View style={[styles.modeCardShine]} pointerEvents="none" />
-                <LinearGradient
-                  colors={[accent.colorBg, "transparent"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View
-                  style={[
-                    styles.modeIconWrap,
-                    {
-                      borderColor: accent.colorBorder,
-                      backgroundColor: accent.colorBg,
-                    },
-                  ]}
-                >
-                  <ModeIcon size={22} color={accent.color} strokeWidth={2} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modeCardTitle}>{meta.label}</Text>
-                  <Text style={styles.modeCardDesc}>{meta.description}</Text>
-                </View>
-              </View>
+
+              {/* Universal Mode Card (Soft Variant) */}
+              <ModeCard
+                modeKey={selectedMode}
+                variant="soft"
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
 
@@ -277,49 +255,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  modeCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 16,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.02)",
-  },
-  modeCardShine: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modeIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  modeCardTitle: {
-    color: "#f1f5f9",
-    fontSize: 17,
-    fontWeight: "900",
-    letterSpacing: -0.3,
-    marginBottom: 3,
-  },
-  modeCardDesc: {
-    color: "#475569",
-    fontSize: 12,
-    fontWeight: "500",
-    lineHeight: 17,
   },
   footer: {
     position: "absolute",
