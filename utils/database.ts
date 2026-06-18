@@ -455,7 +455,7 @@ export const dbHelpers = {
 
   async createGame(
     modeId: number,
-    playStyle: "solo" | "team",
+    playStyle: "player" | "team",
     participants: Participant[],
     settings: Record<string, unknown>,
   ): Promise<number | null> {

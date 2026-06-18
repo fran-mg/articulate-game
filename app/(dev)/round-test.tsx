@@ -29,7 +29,7 @@ export default function RoundTestScreen() {
     useGameStore.setState({
       mode: "catchphrase",
       scoringStyle: "rounds",
-      playStyle: "solo",
+      playStyle: "player",
       targetLimit: 3,
       timerDuration: 60,
       participants: mockPlayers,

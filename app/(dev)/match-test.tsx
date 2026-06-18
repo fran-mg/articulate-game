@@ -63,7 +63,7 @@ export default function MatchTestScreen() {
     useGameStore.setState({
       mode: "catchphrase",
       scoringStyle: "rounds",
-      playStyle: "solo",
+      playStyle: "player",
       targetLimit: 10,
       timerDuration: 60,
       participants: mockPlayers,
