@@ -66,7 +66,7 @@ export default function PlayScreen() {
 
   const [gameState, setGameState] = useState<
     "waiting-forehead" | "countdown" | "playing" | "timeup"
-  >("countdown");
+  >();
   const [countdown, setCountdown] = useState(3);
   const [flashState, setFlashState] = useState<CardFlashState>("default");
   const [displayTime, setDisplayTime] = useState(timerDuration);
