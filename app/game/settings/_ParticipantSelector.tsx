@@ -24,7 +24,7 @@ interface ParticipantSelectorProps {
   onPlayStyleChange: (style: PlayStyle) => void;
   onScrollRequest: (y: number) => void;
   accent: ModeAccent;
-  onResetRoster: () => void; // ── NEW PROP
+  onResetRoster: () => void;
 }
 
 export default function ParticipantSelector({
@@ -40,12 +40,11 @@ export default function ParticipantSelector({
     updateParticipant,
     deleteParticipant,
     reorderParticipants,
-    saveRoster, // ── NEW
-    resetToDefault, // ── NEW
+    saveRoster,
+    resetToDefault,
   } = useRosterStore();
 
   const { showAlert, AlertRender } = useAppAlert();
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [containerY, setContainerY] = useState(0);
@@ -87,8 +86,8 @@ export default function ParticipantSelector({
   };
 
   const handleDelete = (id: number) => {
-    if (participants.length <= 1) {
-      showAlert("Can't remove", `You need at least one ${playStyle}.`);
+    if (participants.length <= 2) {
+      showAlert("Can't remove", `You need at least two ${playStyle}s.`);
       return;
     }
     deleteParticipant(id);
@@ -96,30 +95,19 @@ export default function ParticipantSelector({
 
   const handleAdd = () => {
     if (isNewItemRef.current && editingId !== null) {
-      showAlert(
-        "Name required",
-        `Please name the current ${playStyle} before adding another.`,
-      );
+      showAlert("Name required", `Please name before adding another.`);
       return;
     }
-
     if (editingId !== null && editName.trim() === "") {
-      showAlert(
-        "Name required",
-        `Please finish naming the current ${playStyle} before adding another.`,
-      );
+      showAlert("Name required", `Please finish naming before adding another.`);
       return;
     }
-
     if (editingId !== null) {
       const trimmed = editName.trim();
-      if (trimmed) {
-        updateParticipant(editingId, trimmed);
-      }
+      if (trimmed) updateParticipant(editingId, trimmed);
       setEditingId(null);
       isNewItemRef.current = false;
     }
-
     addParticipant(playStyle);
     setTimeout(() => {
       const latest = useRosterStore.getState().participants.at(-1);
@@ -127,9 +115,7 @@ export default function ParticipantSelector({
     }, 50);
   };
 
-  // ── Save to presets ──
   const handleSave = () => {
-    // If currently mid-edit, lock it in automatically
     if (editingId !== null) {
       const trimmed = editName.trim();
       if (trimmed) updateParticipant(editingId, trimmed);
@@ -137,24 +123,18 @@ export default function ParticipantSelector({
       setEditingId(null);
       isNewItemRef.current = false;
     }
-
-    // Wrap in timeout so UI states (like closing inputs) settle first
     setTimeout(() => {
       saveRoster(playStyle);
-      showAlert(
-        "Roster Saved",
-        `Your ${playStyle} lineup has been saved for future games.`,
-      );
+      showAlert("Roster Saved", `Your ${playStyle} lineup has been saved.`);
     }, 10);
   };
 
-  // ── NEW: Revert to default hardcodes ──
   const handleReset = () => {
     setEditingId(null);
     isNewItemRef.current = false;
     resetToDefault(playStyle);
     onResetRoster();
-    showAlert("Reset Complete", `Restored to the default ${playStyle} lineup.`);
+    showAlert("Reset Complete", `Restored to the default lineup.`);
   };
 
   const handleMove = (index: number, direction: -1 | 1) => {
@@ -169,7 +149,6 @@ export default function ParticipantSelector({
 
   const renderItem = (params: RenderItemParams<Participant>) => {
     const index = participants.findIndex((p) => p.id === params.item.id);
-
     return (
       <ScaleDecorator>
         <ParticipantItem
@@ -196,17 +175,22 @@ export default function ParticipantSelector({
       style={styles.wrapper}
       onLayout={(e) => setContainerY(e.nativeEvent.layout.y)}
     >
-      {/* ── Header card ── */}
-      <View style={styles.headerCard}>
+      <View
+        style={[
+          styles.headerCard,
+          playStyle === "just_play" && {
+            borderBottomWidth: 1,
+            borderRadius: 24,
+          },
+        ]}
+      >
         <View style={styles.cardShine} pointerEvents="none" />
-
         <View style={styles.headerTop}>
           <View style={styles.sectionLabelRow}>
             <LucideIcons.Users size={11} color="#64748b" strokeWidth={2.5} />
-            <Text style={styles.sectionLabel}>Participants</Text>
+            <Text style={styles.sectionLabel}>Play Style</Text>
           </View>
 
-          {/* Solo / Teams toggle */}
           <View style={styles.styleToggle}>
             <TouchableOpacity
               onPress={() => onPlayStyleChange("player")}
@@ -220,11 +204,6 @@ export default function ParticipantSelector({
               ]}
               activeOpacity={0.75}
             >
-              <LucideIcons.User
-                size={11}
-                color={playStyle === "player" ? accent.colorMuted : "#475569"}
-                strokeWidth={2.5}
-              />
               <Text
                 style={[
                   styles.styleBtnText,
@@ -234,7 +213,7 @@ export default function ParticipantSelector({
                   },
                 ]}
               >
-                Players
+                Player
               </Text>
             </TouchableOpacity>
 
@@ -250,11 +229,6 @@ export default function ParticipantSelector({
               ]}
               activeOpacity={0.75}
             >
-              <LucideIcons.Users
-                size={11}
-                color={playStyle === "team" ? accent.colorMuted : "#475569"}
-                strokeWidth={2.5}
-              />
               <Text
                 style={[
                   styles.styleBtnText,
@@ -263,99 +237,143 @@ export default function ParticipantSelector({
                   },
                 ]}
               >
-                Teams
+                Team
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => onPlayStyleChange("just_play")}
+              style={[
+                styles.styleBtn,
+                playStyle === "just_play" && {
+                  backgroundColor: accent.colorBg,
+                  borderColor: accent.colorBorder,
+                },
+                playStyle !== "just_play" && styles.styleBtnInactive,
+              ]}
+              activeOpacity={0.75}
+            >
+              <Text
+                style={[
+                  styles.styleBtnText,
+                  {
+                    color:
+                      playStyle === "just_play" ? accent.colorMuted : "#475569",
+                  },
+                ]}
+              >
+                Just Play
               </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
 
-      {/* ── List body ── */}
-      <View style={styles.listBody}>
-        <NestableDraggableFlatList
-          data={participants}
-          keyExtractor={(item: Participant) => String(item.id)}
-          renderItem={renderItem}
-          onDragEnd={({ data }: any) => reorderParticipants(data)}
-          activationDistance={8}
-        />
-      </View>
-
-      {/* ── Footer card ── */}
-      <View style={styles.footerCard}>
-        <View style={styles.footerMeta}>
-          <Text style={styles.footerCount}>
-            {participants.length}{" "}
-            {participants.length === 1 ? playStyle : `${playStyle}s`}
-          </Text>
-          <View style={styles.dragHint}>
-            {Platform.OS !== "web" && (
-              <LucideIcons.GripVertical
-                color="#1e293b"
-                size={12}
-                strokeWidth={2}
-              />
-            )}
-            <Text style={styles.dragHintText}>
-              {Platform.OS === "web"
-                ? "click arrows to reorder"
-                : "drag to reorder"}
+        {playStyle === "just_play" && (
+          <View style={styles.justPlayBody}>
+            <LucideIcons.Gamepad2
+              size={24}
+              color={accent.colorMuted}
+              strokeWidth={1.5}
+              style={{ marginBottom: 4 }}
+            />
+            <Text style={[styles.justPlayTitle, { color: accent.colorMuted }]}>
+              Casual Mode
+            </Text>
+            <Text style={styles.justPlayDesc}>
+              Jump straight in. No names, no teams, just many rounds!
             </Text>
           </View>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleAdd}
-          activeOpacity={0.7}
-          style={[styles.addBtn, { borderColor: accent.colorBorder }]}
-        >
-          <LucideIcons.Plus
-            size={14}
-            color={accent.colorMuted}
-            strokeWidth={2.5}
-          />
-          <Text style={[styles.addBtnText, { color: accent.colorMuted }]}>
-            Add {playStyle === "player" ? "Player" : "Team"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ── Utility options row ── */}
-        <View style={styles.utilityRow}>
-          <TouchableOpacity
-            onPress={handleSave}
-            style={styles.utilityBtn}
-            activeOpacity={0.6}
-          >
-            <LucideIcons.Save size={13} color="#64748b" strokeWidth={2.5} />
-            <Text style={styles.utilityBtnText}>Save Lineup</Text>
-          </TouchableOpacity>
-
-          <View style={styles.utilityDivider} />
-
-          <TouchableOpacity
-            onPress={handleReset}
-            style={styles.utilityBtn}
-            activeOpacity={0.6}
-          >
-            <LucideIcons.RotateCcw
-              size={13}
-              color="#64748b"
-              strokeWidth={2.5}
-            />
-            <Text style={styles.utilityBtnText}>Reset Defaults</Text>
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
 
+      {playStyle !== "just_play" && (
+        <>
+          <View style={styles.listBody}>
+            <NestableDraggableFlatList
+              data={participants}
+              keyExtractor={(item: Participant) => String(item.id)}
+              renderItem={renderItem}
+              onDragEnd={({ data }: any) => reorderParticipants(data)}
+              activationDistance={8}
+            />
+          </View>
+          <View style={styles.footerCard}>
+            <View style={styles.footerMeta}>
+              <Text style={styles.footerCount}>
+                {participants.length}{" "}
+                {participants.length === 1 ? playStyle : `${playStyle}s`}
+              </Text>
+              <View style={styles.dragHint}>
+                {Platform.OS === "web" ? (
+                  <>
+                    <LucideIcons.ChevronsUpDown
+                      color="#1e293b"
+                      size={12}
+                      strokeWidth={2}
+                    />
+                    <Text style={styles.dragHintText}>arrows to reorder</Text>
+                  </>
+                ) : (
+                  <>
+                    <LucideIcons.GripVertical
+                      color="#1e293b"
+                      size={12}
+                      strokeWidth={2}
+                    />
+                    <Text style={styles.dragHintText}>drag to reorder</Text>
+                  </>
+                )}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleAdd}
+              activeOpacity={0.7}
+              style={[styles.addBtn, { borderColor: accent.colorBorder }]}
+            >
+              <LucideIcons.Plus
+                size={14}
+                color={accent.colorMuted}
+                strokeWidth={2.5}
+              />
+              <Text style={[styles.addBtnText, { color: accent.colorMuted }]}>
+                Add {playStyle === "player" ? "Player" : "Team"}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.utilityRow}>
+              <TouchableOpacity
+                onPress={handleSave}
+                style={styles.utilityBtn}
+                activeOpacity={0.6}
+              >
+                <LucideIcons.Save size={13} color="#64748b" strokeWidth={2.5} />
+                <Text style={styles.utilityBtnText}>Save Lineup</Text>
+              </TouchableOpacity>
+              <View style={styles.utilityDivider} />
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.utilityBtn}
+                activeOpacity={0.6}
+              >
+                <LucideIcons.RotateCcw
+                  size={13}
+                  color="#64748b"
+                  strokeWidth={2.5}
+                />
+                <Text style={styles.utilityBtnText}>Reset Defaults</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
       {AlertRender}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 12,
-  },
+  wrapper: { marginBottom: 12 },
   cardShine: {
     position: "absolute",
     top: 0,
@@ -383,11 +401,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  sectionLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
+  sectionLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionLabel: {
     color: "#475569",
     fontSize: 10,
@@ -395,10 +409,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: "uppercase",
   },
-  styleToggle: {
-    flexDirection: "row",
-    gap: 6,
-  },
+  styleToggle: { flexDirection: "row", gap: 6 },
   styleBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -412,11 +423,23 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
     borderColor: "rgba(255,255,255,0.07)",
   },
-  styleBtnText: {
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.3,
+  styleBtnText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3 },
+
+  justPlayBody: {
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    gap: 4,
   },
+  justPlayTitle: { fontSize: 15, fontWeight: "800", letterSpacing: -0.2 },
+  justPlayDesc: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+
   listBody: {
     backgroundColor: "rgba(15,23,42,0.95)",
     borderLeftWidth: 1,
@@ -449,16 +472,8 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  dragHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  dragHintText: {
-    color: "#1e293b",
-    fontSize: 10,
-    fontWeight: "600",
-  },
+  dragHint: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dragHintText: { color: "#1e293b", fontSize: 10, fontWeight: "600" },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -470,13 +485,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     backgroundColor: "rgba(255,255,255,0.02)",
   },
-  addBtnText: {
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-
-  // ── Utility Row Styles ──────────────────────────────────────────
+  addBtnText: { fontSize: 13, fontWeight: "800", letterSpacing: 0.3 },
   utilityRow: {
     flexDirection: "row",
     marginTop: 12,

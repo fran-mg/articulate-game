@@ -5,10 +5,9 @@ import { Participant } from "../utils/database";
 
 export type GameMode = "headsup" | "catchphrase" | "taboo";
 export type ScoringStyle = "rounds" | "boardgame";
-export type PlayStyle = "player" | "team";
+export type PlayStyle = "player" | "team" | "just_play";
 type CardResult = "guessed" | "passed";
 
-// Re-export so consumers only need to import from one store file
 export type { Participant };
 
 interface TurnHistoryItem {
@@ -29,40 +28,23 @@ interface MatchConfig {
 }
 
 interface GameState {
-  // ── Match config ────────────────────────────────────────────────────────────
   mode: GameMode;
   scoringStyle: ScoringStyle;
   playStyle: PlayStyle;
   targetLimit: number | "Infinity";
   timerDuration: number;
-
-  /**
-   * The single source of truth for who is playing.
-   * player mode → one entry per player
-   * team mode → one entry per team
-   * The game engine never needs to know which type it is — both are treated
-   * identically for turns, scoring, and history.
-   */
   participants: Participant[];
-
-  // ── Session state ────────────────────────────────────────────────────────────
   isPlaying: boolean;
   isPaused: boolean;
   currentRound: number;
   currentTurnIndex: number;
-
-  // ── Scoring ──────────────────────────────────────────────────────────────────
-  // roundScores[roundNumber][participantId] = score
   roundScores: Record<number, Record<number, number>>;
   turnHistory: TurnHistoryItem[];
   turnScore: number;
   turnPasses: number;
-
-  // ── Cards ────────────────────────────────────────────────────────────────────
   cardsInRound: any[];
   currentCardIndex: number;
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
   setupMatch: (config: MatchConfig) => void;
   updateSettingsMidGame: (
     config: Partial<Pick<GameState, "targetLimit" | "timerDuration">>,
@@ -74,8 +56,6 @@ interface GameState {
   toggleHistoryResult: (index: number) => void;
   nextCard: () => void;
   setPaused: (paused: boolean) => void;
-
-  // ── Derived helpers (computed on the fly, no extra state) ───────────────────
   getCurrentParticipant: () => Participant | undefined;
   getParticipantTotalScore: (participantId: number) => number;
 }
@@ -83,7 +63,6 @@ interface GameState {
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
-      // ── Defaults ─────────────────────────────────────────────────────────────
       mode: "headsup",
       scoringStyle: "rounds",
       playStyle: "team",
@@ -100,8 +79,6 @@ export const useGameStore = create<GameState>()(
       turnPasses: 0,
       cardsInRound: [],
       currentCardIndex: 0,
-
-      // ── Actions ──────────────────────────────────────────────────────────────
 
       setupMatch: (config) => {
         set({
@@ -205,8 +182,6 @@ export const useGameStore = create<GameState>()(
 
       setPaused: (paused) => set({ isPaused: paused }),
 
-      // ── Derived ──────────────────────────────────────────────────────────────
-
       getCurrentParticipant: () => {
         const { participants, currentTurnIndex } = get();
         return participants[currentTurnIndex];
@@ -223,7 +198,6 @@ export const useGameStore = create<GameState>()(
     {
       name: "game-session-storage",
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist lightweight preferences — full game state lives in memory
       partialize: (state) => ({
         timerDuration: state.timerDuration,
         scoringStyle: state.scoringStyle,

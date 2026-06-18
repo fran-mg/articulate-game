@@ -23,7 +23,6 @@ import { getModeAccent, getModeMeta } from "../../../utils/_modeTheme";
 import { Participant } from "../../../utils/database";
 import DeckSelector from "./_DeckSelector";
 import ParticipantSelector from "./_ParticipantSelector";
-import ScoringStyleSelector from "./_ScoringStyleSelector";
 import RoundsSelector from "./_RoundsSelector";
 import TimerSelector from "./_TimerSelector";
 import { useAppAlert } from "../../_AppAlert";
@@ -46,7 +45,7 @@ export default function SettingsScreen() {
 
   const [scoringStyle, setScoringStyle] = useState<ScoringStyle>("rounds");
   const [targetLimit, setTargetLimit] = useState<number | "Infinity">(3);
-  const [playStyle, setPlayStyle] = useState<PlayStyle>("team");
+  const [playStyle, setPlayStyle] = useState<PlayStyle>("just_play");
   const [timerDuration, setTimerDuration] = useState(60);
   const [isDecksExpanded, setIsDecksExpanded] = useState(true);
 
@@ -59,37 +58,23 @@ export default function SettingsScreen() {
   const handlePlayStyleChange = (style: PlayStyle) => {
     if (style === playStyle) return;
     const cur = useRosterStore.getState().participants;
+
     if (playStyle === "team") cachedTeamsRef.current = cur;
-    else cachedPlayersRef.current = cur;
+    else if (playStyle === "player") cachedPlayersRef.current = cur;
+
     setPlayStyle(style);
+
     if (style === "team") {
       if (cachedTeamsRef.current)
         useRosterStore.setState({ participants: cachedTeamsRef.current });
       else initRoster("team");
-    } else {
+    } else if (style === "player") {
       if (cachedPlayersRef.current)
         useRosterStore.setState({ participants: cachedPlayersRef.current });
       else initRoster("player");
+    } else {
+      initRoster("just_play");
     }
-  };
-
-  const handleScoringStyleChange = (style: ScoringStyle) => {
-    setScoringStyle(style);
-    if (style === "rounds")
-      setTargetLimit((p) =>
-        p !== "Infinity" ? Math.min(20, Math.max(1, p)) : 3,
-      );
-    else
-      setTargetLimit((p) =>
-        p !== "Infinity" ? Math.min(30, Math.max(5, p)) : 30,
-      );
-  };
-
-  const handleScrollRequest = (yPos: number) => {
-    setTimeout(
-      () => scrollRef.current?.scrollTo({ y: yPos, animated: true }),
-      300,
-    );
   };
 
   const handleStartGame = async () => {
@@ -101,34 +86,43 @@ export default function SettingsScreen() {
       setIsDecksExpanded(true);
       return;
     }
-    const named = participants.filter((p) => p.name.trim().length > 0);
-    if (named.length < 1) {
+
+    // Pass the active participants based on mode
+    const finalParticipants =
+      playStyle === "just_play"
+        ? participants
+        : participants.filter((p) => p.name.trim().length > 0);
+
+    if (playStyle !== "just_play" && finalParticipants.length < 2) {
       showAlert(
         "Not enough participants",
-        `You need at least 1 ${playStyle === "team" ? "team" : "player"}.`,
+        `You need at least 2 ${playStyle === "team" ? "teams" : "players"}.`,
       );
       return;
     }
+
     gameStore.setupMatch({
       mode: selectedMode,
       scoringStyle,
       playStyle,
       targetLimit,
       timerDuration,
-      participants: named,
+      participants: finalParticipants,
       cardsInRound: cards,
     });
     router.replace("/game/play");
   };
 
-  // Tells local cache to drop its temp data on reset
   const handleResetRoster = () => {
     if (playStyle === "team") cachedTeamsRef.current = null;
     else cachedPlayersRef.current = null;
   };
 
   const namedCount = participants.filter((p) => p.name.trim()).length;
-  const participantLabel = playStyle === "team" ? "Teams" : "Players";
+  const startSubTextLeft =
+    playStyle === "just_play"
+      ? "Casual Mode"
+      : `${namedCount} ${playStyle === "team" ? "Teams" : "Players"}`;
 
   return (
     <SafeAreaView style={styles.root}>
@@ -145,12 +139,10 @@ export default function SettingsScreen() {
           {/* ── Page header ── */}
           <View style={styles.pageHeader}>
             <Text style={styles.pageEyebrow}>Match Setup</Text>
-
             <View style={styles.modeRow}>
               <TouchableOpacity
                 onPress={() => router.navigate("/")}
                 style={styles.iconBtn}
-                activeOpacity={0.7}
               >
                 <LucideIcons.ChevronLeft
                   color="#cbd5e1"
@@ -158,7 +150,6 @@ export default function SettingsScreen() {
                   strokeWidth={2.5}
                 />
               </TouchableOpacity>
-
               <View
                 style={[styles.modeCard, { borderColor: accent.colorBorder }]}
               >
@@ -184,24 +175,6 @@ export default function SettingsScreen() {
                   <Text style={styles.modeCardTitle}>{meta.label}</Text>
                   <Text style={styles.modeCardDesc}>{meta.description}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.orientationBadge,
-                    {
-                      borderColor: accent.colorBorder,
-                      backgroundColor: accent.colorBg,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.orientationBadgeText,
-                      { color: accent.colorMuted },
-                    ]}
-                  >
-                    {meta.orientationBadge}
-                  </Text>
-                </View>
               </View>
             </View>
           </View>
@@ -215,7 +188,12 @@ export default function SettingsScreen() {
           <ParticipantSelector
             playStyle={playStyle}
             onPlayStyleChange={handlePlayStyleChange}
-            onScrollRequest={handleScrollRequest}
+            onScrollRequest={(y) =>
+              setTimeout(
+                () => scrollRef.current?.scrollTo({ y, animated: true }),
+                300,
+              )
+            }
             accent={accent}
             onResetRoster={handleResetRoster}
           />
@@ -258,7 +236,7 @@ export default function SettingsScreen() {
               <Text style={styles.startBtnText}>Start Game</Text>
             </View>
             <Text style={styles.startBtnSub}>
-              {namedCount} {participantLabel}
+              {startSubTextLeft}
               {"  ·  "}
               {scoringStyle === "rounds"
                 ? targetLimit === "Infinity"
@@ -278,19 +256,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  scroll: {
-    padding: 16,
-    paddingBottom: 120,
-  },
-
-  // ── Page header ─────────────────────────────────────────────────────────────
-  pageHeader: {
-    marginBottom: 16,
-  },
+  root: { flex: 1, backgroundColor: "#020617" },
+  scroll: { padding: 16, paddingBottom: 120 },
+  pageHeader: { marginBottom: 16 },
   pageEyebrow: {
     color: "#1e293b",
     fontSize: 11,
@@ -299,11 +267,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 12,
   },
-  modeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  modeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconBtn: {
     width: 40,
     height: 40,
@@ -357,22 +321,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     lineHeight: 17,
   },
-  orientationBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-    flexShrink: 0,
-  },
-  orientationBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-
-  // ── Footer ──────────────────────────────────────────────────────────────────
   footer: {
     position: "absolute",
     bottom: 0,
@@ -399,11 +347,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  startBtnInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  startBtnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
   startBtnText: {
     color: "#ffffff",
     fontSize: 18,

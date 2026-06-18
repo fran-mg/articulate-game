@@ -12,13 +12,13 @@ export default function MatchSummaryScreen() {
 
   const { playSound } = useSoundManager(["score_reveal"]);
 
-  // ── SOUND: play once when the screen appears ────────────────────────────
   useEffect(() => {
     playSound("soft_score_reveal");
   }, []);
 
-  const totals: Record<number, number> = {};
+  const isJustPlay = playStyle === "just_play";
 
+  const totals: Record<number, number> = {};
   participants.forEach((entity) => {
     totals[entity.id] = Object.values(roundScores).reduce(
       (acc, round) => acc + (round[entity.id] || 0),
@@ -29,6 +29,7 @@ export default function MatchSummaryScreen() {
   const sortedEntities = [...participants].sort(
     (a, b) => totals[b.id] - totals[a.id],
   );
+
   const winner = sortedEntities[0];
   const isTie =
     sortedEntities.length > 1 &&
@@ -38,8 +39,112 @@ export default function MatchSummaryScreen() {
     .map(Number)
     .sort((a, b) => a - b);
 
+  const handleHome = () => {
+    endMatch();
+    router.replace("/" as any);
+  };
+
+  // ── CASUAL MODE SUMMARY UI ────────────────────────────────────────────────
+  if (isJustPlay) {
+    const casualId = winner?.id;
+    const casualScores = roundKeys.map((r) => ({
+      round: r,
+      score: roundScores[r]?.[casualId] || 0,
+    }));
+    const bestScore =
+      casualScores.length > 0
+        ? Math.max(...casualScores.map((c) => c.score))
+        : 0;
+
+    return (
+      <SafeAreaView className="flex-1 bg-slate-950 p-4">
+        <View className="items-center mt-4 mb-6">
+          <LucideIcons.Gamepad2 color="#3B82F6" size={56} className="mb-2" />
+          <Text className="text-slate-400 font-bold uppercase tracking-widest mb-1 text-xs">
+            Session Complete
+          </Text>
+          <Text className="text-white text-3xl font-black text-center mb-1">
+            Well Played!
+          </Text>
+          <View className="bg-amber-500/10 border border-amber-500/30 px-5 py-2 rounded-full flex-row items-center mt-2">
+            <LucideIcons.Trophy color="#F59E0B" size={14} strokeWidth={3} />
+            <Text className="text-amber-500 font-bold text-sm ml-2 tracking-wide">
+              Top Score: {bestScore}
+            </Text>
+          </View>
+        </View>
+
+        <View className="bg-slate-900 rounded-3xl border border-slate-800 flex-1 overflow-hidden mx-6">
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            {/* Table Header */}
+            <View className="flex-row justify-between px-6 h-12 border-b border-slate-800 items-end pb-3">
+              <Text className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                Round
+              </Text>
+              <Text className="text-slate-400 font-bold uppercase text-[10px] tracking-wider text-right">
+                Score
+              </Text>
+            </View>
+
+            {/* Table Rows */}
+            {casualScores.map(({ round, score }, index) => {
+              // Ties for best score naturally highlight multiple rounds!
+              const isBest = score === bestScore && score > 0;
+              const isLast = index === casualScores.length - 1;
+
+              return (
+                <View
+                  key={round}
+                  className={`flex-row justify-between items-center px-6 h-16 ${
+                    !isLast ? "border-b border-slate-800/50" : ""
+                  }`}
+                >
+                  <View className="flex-row items-center">
+                    <Text
+                      className={`font-bold text-base ${
+                        isBest ? "text-amber-500" : "text-slate-300"
+                      }`}
+                    >
+                      Round {round}
+                    </Text>
+                    {isBest && (
+                      <View className="ml-3 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                        <Text className="text-amber-500 text-[9px] font-black uppercase tracking-wider">
+                          Best
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text
+                    className={`font-black text-2xl ${
+                      isBest ? "text-amber-500" : "text-white"
+                    }`}
+                  >
+                    {score}
+                  </Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <View className="p-6 pt-2">
+          <TouchableOpacity
+            onPress={handleHome}
+            className="bg-blue-600 rounded-2xl py-5 mt-6 items-center shadow-lg"
+          >
+            <Text className="text-white font-black text-lg uppercase tracking-wide">
+              Back to Home
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ── STANDARD MULTIPLAYER SUMMARY UI (Players/Teams) ───────────────────────
   return (
-    <SafeAreaView className="flex-1 bg-slate-950 p-3">
+    <SafeAreaView className="flex-1 bg-slate-950 p-4">
       <View className="items-center mt-4 mb-8">
         <LucideIcons.Trophy color="#F59E0B" size={56} className="mb-2" />
         <Text className="text-slate-400 font-bold uppercase tracking-widest mb-1 text-xs">
@@ -50,7 +155,7 @@ export default function MatchSummaryScreen() {
         </Text>
       </View>
 
-      <View className="bg-slate-900 rounded-3xl border border-slate-800 flex-1 overflow-hidden">
+      <View className="bg-slate-900 rounded-3xl border border-slate-800 flex-1 overflow-hidden mx-2">
         {/* Main Vertical Scroll */}
         <ScrollView className="flex-1 p-3" showsVerticalScrollIndicator={false}>
           <View className="flex-row">
@@ -67,7 +172,9 @@ export default function MatchSummaryScreen() {
                   className="h-14 flex-row items-center border-b border-slate-800/50"
                 >
                   <Text
-                    className={`font-black text-sm w-5 ${index === 0 ? "text-amber-500" : "text-slate-600"}`}
+                    className={`font-black text-sm w-5 ${
+                      index === 0 ? "text-amber-500" : "text-slate-600"
+                    }`}
                   >
                     #{index + 1}
                   </Text>
@@ -130,7 +237,9 @@ export default function MatchSummaryScreen() {
                   className="h-14 justify-center border-b border-slate-800/50"
                 >
                   <Text
-                    className={`text-center font-black text-xl ${index === 0 ? "text-amber-500" : "text-white"}`}
+                    className={`text-center font-black text-xl ${
+                      index === 0 ? "text-amber-500" : "text-white"
+                    }`}
                   >
                     {totals[entity.id]}
                   </Text>
@@ -141,17 +250,16 @@ export default function MatchSummaryScreen() {
         </ScrollView>
       </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          endMatch();
-          router.replace("/" as any);
-        }}
-        className="bg-blue-600 rounded-2xl py-5 mt-6 items-center shadow-lg"
-      >
-        <Text className="text-white font-black text-lg uppercase tracking-wide">
-          Back to Home
-        </Text>
-      </TouchableOpacity>
+      <View className="p-6 pt-2">
+        <TouchableOpacity
+          onPress={handleHome}
+          className="bg-blue-600 rounded-2xl py-5 mt-6 items-center shadow-lg"
+        >
+          <Text className="text-white font-black text-lg uppercase tracking-wide">
+            Back to Home
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }

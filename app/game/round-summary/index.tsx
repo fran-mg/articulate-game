@@ -16,7 +16,7 @@ import ScoreHeader from "./_ScoreHeader";
 export default function RoundSummaryScreen() {
   const router = useRouter();
   const gameStore = useGameStore();
-  const { showAlert, AlertRender } = useAppAlert(); // Initialize alert
+  const { showAlert, AlertRender } = useAppAlert();
 
   const {
     mode,
@@ -44,6 +44,7 @@ export default function RoundSummaryScreen() {
 
   const currentEntity = participants[currentTurnIndex];
 
+  // In 'just_play', there's only 1 participant, so it is ALWAYS the last turn of the round.
   const isLastTurnOfRound = currentTurnIndex === participants.length - 1;
   const nextRound = isLastTurnOfRound ? currentRound + 1 : currentRound;
   const hasLimit = targetLimit !== "Infinity";
@@ -55,17 +56,14 @@ export default function RoundSummaryScreen() {
 
   const nextEntity = participants[(currentTurnIndex + 1) % participants.length];
 
-  // ── REBUILT: Make async to fetch new shuffled cards per turn
   const handleNext = async () => {
     playSound("click");
     if (isMatchOver) {
       router.replace("/game/match-summary" as any);
     } else {
-      // 1. Fetch newly shuffled cards based on *current* deck selections
       await useDeckStore.getState().loadCardsForSelectedDecks();
       const freshCards = useDeckStore.getState().currentCards;
 
-      // 2. Prevent progression if they unticked all decks in the settings modal
       if (freshCards.length === 0) {
         showAlert(
           "No Decks Selected",
@@ -74,7 +72,6 @@ export default function RoundSummaryScreen() {
         return;
       }
 
-      // 3. Update game store with the new shuffled cards for this upcoming turn
       useGameStore.setState((state) => ({
         currentTurnIndex:
           state.currentTurnIndex === participants.length - 1
@@ -92,7 +89,6 @@ export default function RoundSummaryScreen() {
   };
 
   const handleSaveSettings = () => {
-    // Clamp limit: rounds mode cannot go below currentRound
     let newLim: number | "Infinity" = editLimit;
     if (editLimit !== "Infinity") {
       const parsed = typeof editLimit === "number" ? editLimit : currentRound;
@@ -101,7 +97,6 @@ export default function RoundSummaryScreen() {
       else newLim = Math.min(30, Math.max(5, parsed));
     }
 
-    // Clamp timer
     const newTimer = Math.min(180, Math.max(10, editTimer));
 
     gameStore.updateSettingsMidGame({
@@ -109,13 +104,11 @@ export default function RoundSummaryScreen() {
       timerDuration: newTimer,
     });
 
-    // Sync local state to clamped values so UI stays consistent
     setEditLimit(newLim);
     setEditTimer(newTimer);
     setShowSettingsModal(false);
   };
 
-  // Re-open the modal with fresh store values each time
   const handleOpenSettings = () => {
     setEditLimit(gameStore.targetLimit);
     setEditTimer(gameStore.timerDuration);
@@ -128,11 +121,20 @@ export default function RoundSummaryScreen() {
 
   const getButtonText = () => {
     if (isMatchOver) return "Reveal Final Scores";
+
+    // Generic button mapping for Casual Mode
+    if (playStyle === "just_play") {
+      if (isNextRoundFinal) return "Start Final Round";
+      return `Start Round ${nextRound}`;
+    }
+
+    // Default named button mapping
     const entityName = nextEntity?.name ?? "Next";
     if (isNextRoundFinal) return `${entityName} — Start Final Round`;
     if (isLastTurnOfRound) return `${entityName} — Start Round ${nextRound}`;
     return `${entityName} — Start Turn`;
   };
+
   const buttonText = getButtonText();
 
   return (
@@ -185,7 +187,6 @@ export default function RoundSummaryScreen() {
         handleSaveSettings={handleSaveSettings}
       />
 
-      {/* Render Alert Overlay */}
       {AlertRender}
     </SafeAreaView>
   );

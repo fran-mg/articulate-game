@@ -2,23 +2,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { Participant } from "../utils/database";
-
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+import { PlayStyle } from "./useGameStore";
 
 export const PRESET_COLORS = [
-  "#3B82F6", // blue
-  "#EF4444", // red
-  "#10B981", // emerald
-  "#F59E0B", // amber
-  "#8B5CF6", // violet
-  "#F97316", // orange
-  "#0EA5E9", // sky
-  "#EC4899", // pink
+  "#3B82F6",
+  "#EF4444",
+  "#10B981",
+  "#F59E0B",
+  "#8B5CF6",
+  "#F97316",
+  "#0EA5E9",
+  "#EC4899",
 ];
 
 const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
-
-// ─── DEFAULTS ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_PLAYER_ROSTER: Participant[] = [
   { id: 1, name: "Player 1", color: PRESET_COLORS[0], type: "player" },
@@ -30,26 +27,19 @@ const DEFAULT_TEAM_ROSTER: Participant[] = [
   { id: 2, name: "Team 2", color: PRESET_COLORS[1], type: "team" },
 ];
 
-// ─── STORE ────────────────────────────────────────────────────────────────────
-
 interface RosterState {
   participants: Participant[];
   savedPlayers: Participant[];
   savedTeams: Participant[];
 
-  /** Initialise with sensible defaults for the chosen play style */
-  initRoster: (playStyle: "player" | "team") => void;
-
-  addParticipant: (playStyle: "player" | "team") => void;
+  initRoster: (playStyle: PlayStyle) => void;
+  addParticipant: (playStyle: PlayStyle) => void;
   updateParticipant: (id: number, name: string) => void;
   deleteParticipant: (id: number) => void;
   reorderParticipants: (newOrder: Participant[]) => void;
   getNextColor: () => string;
-
-  /** Save the current active roster to memory */
-  saveRoster: (playStyle: "player" | "team") => void;
-  /** Wipe custom saved data and revert to initial hardcoded defaults */
-  resetToDefault: (playStyle: "player" | "team") => void;
+  saveRoster: (playStyle: PlayStyle) => void;
+  resetToDefault: (playStyle: PlayStyle) => void;
 }
 
 export const useRosterStore = create<RosterState>()(
@@ -60,6 +50,20 @@ export const useRosterStore = create<RosterState>()(
       savedTeams: DEFAULT_TEAM_ROSTER.map((p) => ({ ...p })),
 
       initRoster: (playStyle) => {
+        if (playStyle === "just_play") {
+          set({
+            participants: [
+              {
+                id: 1,
+                name: "Just Play Player",
+                color: PRESET_COLORS[0],
+                type: "player",
+              },
+            ],
+          });
+          return;
+        }
+
         const { savedPlayers, savedTeams } = get();
         set({
           participants:
@@ -70,6 +74,7 @@ export const useRosterStore = create<RosterState>()(
       },
 
       addParticipant: (playStyle) => {
+        if (playStyle === "just_play") return;
         const { participants, getNextColor } = get();
         const newParticipant: Participant = {
           id: generateId(),
@@ -107,6 +112,7 @@ export const useRosterStore = create<RosterState>()(
       },
 
       saveRoster: (playStyle) => {
+        if (playStyle === "just_play") return;
         const { participants } = get();
         if (playStyle === "player") {
           set({ savedPlayers: participants.map((p) => ({ ...p })) });
@@ -116,6 +122,7 @@ export const useRosterStore = create<RosterState>()(
       },
 
       resetToDefault: (playStyle) => {
+        if (playStyle === "just_play") return;
         if (playStyle === "player") {
           const def = DEFAULT_PLAYER_ROSTER.map((p) => ({ ...p }));
           set({ savedPlayers: def, participants: def });
@@ -128,8 +135,6 @@ export const useRosterStore = create<RosterState>()(
     {
       name: "roster-store",
       storage: createJSONStorage(() => AsyncStorage),
-      // We ONLY save the permanent presets, NOT the active session participants.
-      // This prevents halfway-edited names from accidentally persisting on app close.
       partialize: (state) => ({
         savedPlayers: state.savedPlayers,
         savedTeams: state.savedTeams,
