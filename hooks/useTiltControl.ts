@@ -1,7 +1,5 @@
-// hooks/useTiltControl.ts
 import { Accelerometer } from "expo-sensors";
 import { useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
 
 type TiltDirection = "up" | "down" | "center";
 
@@ -23,9 +21,7 @@ export function useTiltControl(
   }, [onTiltUp, onTiltDown]);
 
   useEffect(() => {
-    if (!isActive || Platform.OS === "web") {
-      return;
-    }
+    if (!isActive) return;
 
     Accelerometer.setUpdateInterval(100);
 
@@ -50,7 +46,6 @@ export function useTiltControl(
         setTilt("center");
       }
     });
-
     return () => subscription.remove();
   }, [isActive, tilt]);
 
@@ -61,21 +56,17 @@ export function useTiltControl(
       isCooldown.current = false;
     }, 400); // 400ms cooldown before next tilt is allowed
   };
-
   return tilt;
 }
 
 export function useForeheadDetector(isActive: boolean, onDetected: () => void) {
   const onDetectedRef = useRef(onDetected);
-
   useEffect(() => {
     onDetectedRef.current = onDetected;
   }, [onDetected]);
 
   useEffect(() => {
-    if (!isActive || Platform.OS === "web") {
-      return;
-    }
+    if (!isActive) return;
 
     Accelerometer.setUpdateInterval(100);
     let triggered = false;
