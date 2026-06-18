@@ -31,7 +31,8 @@ export default function PlayScreen() {
   const router = useRouter();
 
   const { playSound } = useSoundManager([
-    "countdown",
+    "countdown_tick",
+    "countdown_go",
     "time_up",
     "correct",
     "pass",
@@ -125,20 +126,28 @@ export default function PlayScreen() {
       setCountdown(3);
       setDisplayTime(timerDuration);
       progress.value = 1;
+
+      // Initial tick & haptic immediately for "3"
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      playSound("countdown");
+      // Use a local variable to safely track ticks without relying on React state updaters for side effects
+      let currentCount = 3;
 
       countInterval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(countInterval);
-            setGameState("playing");
-            return 0;
-          }
+        currentCount -= 1;
+
+        if (currentCount <= 0) {
+          // Reached "Go!"
+          clearInterval(countInterval);
+          setGameState("playing");
+          playSound("countdown_go");
+          setCountdown(0);
+        } else {
+          // Ticks for "2" and "1"
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          return prev - 1;
-        });
+          playSound("countdown_tick");
+          setCountdown(currentCount);
+        }
       }, 1000);
     }
     return () => {
@@ -180,11 +189,9 @@ export default function PlayScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     playSound("time_up");
 
-    // Record currently visible card as a "pass" before ending the turn.
     const state = useGameStore.getState();
     const latestCard = state.cardsInRound[state.currentCardIndex];
     if (latestFlashState.current === "default" && latestCard) {
-      // If the flash state isn't default, it means they clicked "pass" or "got it" right at the buzzer.
       state.recordCardResult(latestCard.id, latestCard.word, "passed");
     }
 

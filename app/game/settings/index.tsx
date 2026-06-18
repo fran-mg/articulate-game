@@ -19,6 +19,7 @@ import {
   useGameStore,
 } from "../../../stores/useGameStore";
 import { useRosterStore } from "../../../stores/useRosterStore";
+import { useSoundManager } from "../../../hooks/useSoundManager";
 import { getModeAccent } from "../../../utils/_modeTheme";
 import { Participant } from "../../../utils/database";
 import DeckSelector from "./_DeckSelector";
@@ -36,6 +37,8 @@ export default function SettingsScreen() {
   const gameStore = useGameStore();
   const { participants, initRoster } = useRosterStore();
   const { showAlert, AlertRender } = useAppAlert();
+
+  const { playSound } = useSoundManager(["countdown_tick"]);
 
   const scrollRef = useRef<any>(null);
   const cachedTeamsRef = useRef<Participant[] | null>(null);
@@ -107,6 +110,8 @@ export default function SettingsScreen() {
       participants: finalParticipants,
       cardsInRound: cards,
     });
+
+    playSound("countdown_tick");
     router.replace("/game/play");
   };
 
