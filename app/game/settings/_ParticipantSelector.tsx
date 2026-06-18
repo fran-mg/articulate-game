@@ -1,6 +1,12 @@
 import * as LucideIcons from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Platform,
+} from "react-native";
 import { RenderItemParams } from "react-native-draggable-flatlist";
 import {
   NestableDraggableFlatList,
@@ -283,12 +289,18 @@ export default function ParticipantSelector({
             {participants.length === 1 ? playStyle : `${playStyle}s`}
           </Text>
           <View style={styles.dragHint}>
-            <LucideIcons.GripVertical
-              color="#1e293b"
-              size={12}
-              strokeWidth={2}
-            />
-            <Text style={styles.dragHintText}>drag to reorder</Text>
+            {Platform.OS !== "web" && (
+              <LucideIcons.GripVertical
+                color="#1e293b"
+                size={12}
+                strokeWidth={2}
+              />
+            )}
+            <Text style={styles.dragHintText}>
+              {Platform.OS === "web"
+                ? "click arrows to reorder"
+                : "drag to reorder"}
+            </Text>
           </View>
         </View>
 
