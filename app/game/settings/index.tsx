@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { NestableScrollContainer } from "react-native-draggable-flatlist";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDeckStore } from "../../../stores/useDeckStore";
+import { useDeckStore } from "../../../stores/useDeckStore"; // Keep for handleStartGame
 import {
   PlayStyle,
   ScoringStyle,
@@ -26,7 +26,7 @@ import ParticipantSelector from "./_ParticipantSelector";
 import ScoringStyleSelector from "./_ScoringStyleSelector";
 import RoundsSelector from "./_RoundsSelector";
 import TimerSelector from "./_TimerSelector";
-import { useAppAlert } from "../../_AppAlert"; // Updated import to include underscore
+import { useAppAlert } from "../../_AppAlert";
 
 export default function SettingsScreen() {
   const params = useLocalSearchParams();
@@ -36,16 +36,8 @@ export default function SettingsScreen() {
   const meta = getModeMeta(selectedMode);
   const ModeIcon = meta.Icon;
 
-  const {
-    decks,
-    selectedDeckIds,
-    loadDecks,
-    toggleDeckSelection,
-    selectAllDecks,
-  } = useDeckStore();
   const gameStore = useGameStore();
   const { participants, initRoster } = useRosterStore();
-
   const { showAlert, AlertRender } = useAppAlert();
 
   const scrollRef = useRef<any>(null);
@@ -59,11 +51,6 @@ export default function SettingsScreen() {
   const [isDecksExpanded, setIsDecksExpanded] = useState(true);
 
   useEffect(() => {
-    const init = async () => {
-      await loadDecks();
-      selectAllDecks();
-    };
-    init();
     initRoster("team");
     cachedTeamsRef.current = null;
     cachedSolosRef.current = null;
@@ -108,6 +95,7 @@ export default function SettingsScreen() {
   const handleStartGame = async () => {
     await useDeckStore.getState().loadCardsForSelectedDecks();
     const cards = useDeckStore.getState().currentCards;
+
     if (cards.length === 0) {
       showAlert("No Cards", "Please select at least one deck with cards.");
       setIsDecksExpanded(true);
@@ -226,12 +214,10 @@ export default function SettingsScreen() {
           />
 
           <DeckSelector
-            decks={decks}
-            selectedDeckIds={selectedDeckIds}
             isDecksExpanded={isDecksExpanded}
             setIsDecksExpanded={setIsDecksExpanded}
-            toggleDeckSelection={toggleDeckSelection}
             accent={accent}
+            autoSelectAllOnMount={true}
           />
 
           <TimerSelector

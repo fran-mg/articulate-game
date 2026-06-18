@@ -1,5 +1,5 @@
 import * as LucideIcons from "lucide-react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,26 +7,41 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Deck } from "../../../stores/useDeckStore";
+import { useDeckStore } from "../../../stores/useDeckStore";
 import { ModeAccent } from "../../../utils/_modeTheme";
 
 interface DeckSelectorProps {
-  decks: Deck[];
-  selectedDeckIds: string[];
   isDecksExpanded: boolean;
   setIsDecksExpanded: (val: boolean) => void;
-  toggleDeckSelection: (deckId: string) => void;
   accent: ModeAccent;
+  autoSelectAllOnMount?: boolean; // Tell it when to select all vs preserve state
 }
 
 export default function DeckSelector({
-  decks = [],
-  selectedDeckIds = [],
   isDecksExpanded,
   setIsDecksExpanded,
-  toggleDeckSelection,
   accent,
+  autoSelectAllOnMount = false,
 }: DeckSelectorProps) {
+  // Move all the store logic inside the component!
+  const {
+    decks,
+    selectedDeckIds,
+    toggleDeckSelection,
+    loadDecks,
+    selectAllDecks,
+  } = useDeckStore();
+
+  useEffect(() => {
+    const init = async () => {
+      await loadDecks();
+      if (autoSelectAllOnMount) {
+        selectAllDecks();
+      }
+    };
+    init();
+  }, [autoSelectAllOnMount]);
+
   const totalDecks = decks.length;
   const selectedCount = selectedDeckIds.length;
 
@@ -34,15 +49,11 @@ export default function DeckSelector({
   const noneSelected = totalDecks > 0 && selectedCount === 0;
   const someSelected = totalDecks > 0 && !allSelected && !noneSelected;
 
-  // Mass toggle logic: if all are selected -> select none. Otherwise -> select all.
   const handleBulkToggle = () => {
     if (totalDecks === 0) return;
-
     if (allSelected) {
-      // Unselect all
       selectedDeckIds.forEach((id) => toggleDeckSelection(id));
     } else {
-      // Select all missing
       decks.forEach((deck) => {
         if (!selectedDeckIds.includes(deck.id)) {
           toggleDeckSelection(deck.id);
@@ -74,7 +85,6 @@ export default function DeckSelector({
               {selectedCount === 1 ? "deck" : "decks"} active
             </Text>
 
-            {/* Interactive Status Badge / Button */}
             {totalDecks > 0 && (
               <TouchableOpacity
                 activeOpacity={0.65}
@@ -149,7 +159,7 @@ export default function DeckSelector({
         </View>
       </TouchableOpacity>
 
-      {/* ── Expanded list — seamlessly attached, scrollable ── */}
+      {/* ── Expanded list ── */}
       {isDecksExpanded && (
         <>
           <View style={styles.divider} />
@@ -190,7 +200,6 @@ export default function DeckSelector({
                         : styles.deckRowInactive,
                     ]}
                   >
-                    {/* Icon - uses accent color when selected, deck color when not */}
                     <View
                       style={[
                         styles.deckIcon,
@@ -207,7 +216,6 @@ export default function DeckSelector({
                       />
                     </View>
 
-                    {/* Info */}
                     <View style={styles.deckInfo}>
                       <Text
                         style={[
@@ -231,7 +239,6 @@ export default function DeckSelector({
                       </Text>
                     </View>
 
-                    {/* Checkbox */}
                     <View
                       style={[
                         styles.checkbox,
