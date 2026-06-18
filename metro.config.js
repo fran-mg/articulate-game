@@ -3,8 +3,14 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
+// Forces Metro to resolve web entries correctly without crashing on import.meta (Zustand v5)
+config.resolver.unstable_conditionNames = [
+  "browser",
+  "require",
+  "react-native",
+];
+
 // Force Metro to recognize and correctly link WebAssembly binary files
-// Add wasm to both sourceExts and assetExts to ensure compatibility
 config.resolver.sourceExts.push("wasm");
 config.resolver.assetExts.push("wasm");
 
