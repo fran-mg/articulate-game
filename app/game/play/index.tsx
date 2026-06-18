@@ -82,29 +82,43 @@ export default function PlayScreen() {
   useEffect(() => {
     let isMounted = true;
     const applyOrientation = async () => {
-      if (meta.orientation === "landscape") {
-        await ScreenOrientation.lockAsync(
-          ScreenOrientation.OrientationLock.LANDSCAPE,
+      try {
+        if (meta.orientation === "landscape") {
+          await ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.LANDSCAPE,
+          );
+        } else if (meta.orientation === "portrait") {
+          await ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.PORTRAIT_UP,
+          );
+        } else {
+          await ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.ALL,
+          );
+        }
+      } catch (error) {
+        // Web browsers often reject orientation locks (requires fullscreen/permissions).
+        // We safely catch the error so the app doesn't crash!
+        console.log(
+          "Orientation lock bypassed: Not supported on this device/browser.",
         );
-        if (isMounted) setGameState("waiting-forehead");
-      } else if (meta.orientation === "portrait") {
-        await ScreenOrientation.lockAsync(
-          ScreenOrientation.OrientationLock.PORTRAIT_UP,
-        );
-        if (isMounted) setGameState("countdown");
-      } else {
-        await ScreenOrientation.lockAsync(
-          ScreenOrientation.OrientationLock.ALL,
-        );
-        if (isMounted) setGameState("countdown");
+      } finally {
+        if (isMounted) {
+          setGameState(
+            meta.orientation === "landscape" ? "waiting-forehead" : "countdown",
+          );
+        }
       }
     };
+
     applyOrientation();
+
     return () => {
       isMounted = false;
+      // We also add .catch() to the cleanup so it doesn't crash when leaving the screen
       ScreenOrientation.lockAsync(
         ScreenOrientation.OrientationLock.PORTRAIT_UP,
-      );
+      ).catch(() => {});
     };
   }, [meta.orientation]);
 

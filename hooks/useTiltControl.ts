@@ -1,6 +1,7 @@
 // hooks/useTiltControl.ts
 import { Accelerometer } from "expo-sensors";
 import { useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 
 type TiltDirection = "up" | "down" | "center";
 
@@ -22,8 +23,7 @@ export function useTiltControl(
   }, [onTiltUp, onTiltDown]);
 
   useEffect(() => {
-    if (!isActive) {
-      Accelerometer.removeAllListeners();
+    if (!isActive || Platform.OS === "web") {
       return;
     }
 
@@ -39,12 +39,12 @@ export function useTiltControl(
       if (z < -threshold && tilt !== "down") {
         setTilt("down");
         triggerAction(downRef.current);
-      } 
+      }
       // Z > 0.65: Phone screen is facing the sky (Tilt Up -> Pass)
       else if (z > threshold && tilt !== "up") {
         setTilt("up");
         triggerAction(upRef.current);
-      } 
+      }
       // Z between -0.4 and 0.4: Phone is back upright on the forehead
       else if (z >= -0.4 && z <= 0.4 && tilt !== "center") {
         setTilt("center");
@@ -73,8 +73,7 @@ export function useForeheadDetector(isActive: boolean, onDetected: () => void) {
   }, [onDetected]);
 
   useEffect(() => {
-    if (!isActive) {
-      Accelerometer.removeAllListeners();
+    if (!isActive || Platform.OS === "web") {
       return;
     }
 
@@ -85,8 +84,8 @@ export function useForeheadDetector(isActive: boolean, onDetected: () => void) {
 
     const sub = Accelerometer.addListener(({ x, z }) => {
       if (triggered) return;
-      
-      // Landscape upright check: 
+
+      // Landscape upright check:
       // Math.abs(x) > 0.7 ensures it's horizontally level (left or right edge down)
       // Math.abs(z) < 0.3 ensures the screen is roughly perfectly vertical
       if (Math.abs(x) > 0.7 && Math.abs(z) < 0.3) {
