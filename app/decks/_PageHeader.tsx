@@ -14,7 +14,7 @@ export default function PageHeader({ onCloudPress }: Props) {
   return (
     <View style={styles.pageHeader}>
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={() => router.navigate("/")}
         style={styles.iconBtn}
         activeOpacity={0.7}
       >
