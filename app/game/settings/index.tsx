@@ -152,48 +152,62 @@ export default function SettingsScreen() {
           <View style={styles.pageHeader}>
             <Text style={styles.pageEyebrow}>Match Setup</Text>
 
-            <View
-              style={[styles.modeCard, { borderColor: accent.colorBorder }]}
-            >
-              <View style={[styles.modeCardShine]} pointerEvents="none" />
-              <LinearGradient
-                colors={[accent.colorBg, "transparent"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <View
-                style={[
-                  styles.modeIconWrap,
-                  {
-                    borderColor: accent.colorBorder,
-                    backgroundColor: accent.colorBg,
-                  },
-                ]}
+            <View style={styles.modeRow}>
+              <TouchableOpacity
+                onPress={() => router.navigate("/")}
+                style={styles.iconBtn}
+                activeOpacity={0.7}
               >
-                <ModeIcon size={22} color={accent.color} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modeCardTitle}>{meta.label}</Text>
-                <Text style={styles.modeCardDesc}>{meta.description}</Text>
-              </View>
+                <LucideIcons.ChevronLeft
+                  color="#cbd5e1"
+                  size={20}
+                  strokeWidth={2.5}
+                />
+              </TouchableOpacity>
+
               <View
-                style={[
-                  styles.orientationBadge,
-                  {
-                    borderColor: accent.colorBorder,
-                    backgroundColor: accent.colorBg,
-                  },
-                ]}
+                style={[styles.modeCard, { borderColor: accent.colorBorder }]}
               >
-                <Text
+                <View style={[styles.modeCardShine]} pointerEvents="none" />
+                <LinearGradient
+                  colors={[accent.colorBg, "transparent"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <View
                   style={[
-                    styles.orientationBadgeText,
-                    { color: accent.colorMuted },
+                    styles.modeIconWrap,
+                    {
+                      borderColor: accent.colorBorder,
+                      backgroundColor: accent.colorBg,
+                    },
                   ]}
                 >
-                  {meta.orientationBadge}
-                </Text>
+                  <ModeIcon size={22} color={accent.color} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modeCardTitle}>{meta.label}</Text>
+                  <Text style={styles.modeCardDesc}>{meta.description}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.orientationBadge,
+                    {
+                      borderColor: accent.colorBorder,
+                      backgroundColor: accent.colorBg,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.orientationBadgeText,
+                      { color: accent.colorMuted },
+                    ]}
+                  >
+                    {meta.orientationBadge}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -292,7 +306,23 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 12,
   },
+  modeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   modeCard: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
