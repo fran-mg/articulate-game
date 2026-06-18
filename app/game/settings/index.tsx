@@ -56,7 +56,7 @@ export default function SettingsScreen() {
   const [targetLimit, setTargetLimit] = useState<number | "Infinity">(3);
   const [playStyle, setPlayStyle] = useState<PlayStyle>("team");
   const [timerDuration, setTimerDuration] = useState(60);
-  const [isDecksExpanded, setIsDecksExpanded] = useState(false);
+  const [isDecksExpanded, setIsDecksExpanded] = useState(true);
 
   useEffect(() => {
     const init = async () => {
