@@ -102,10 +102,10 @@ export default function SettingsScreen() {
       return;
     }
     const named = participants.filter((p) => p.name.trim().length > 0);
-    if (named.length < 2) {
+    if (named.length < 1) {
       showAlert(
         "Not enough participants",
-        `You need at least 2 ${playStyle === "team" ? "teams" : "players"}.`,
+        `You need at least 1 ${playStyle === "team" ? "team" : "player"}.`,
       );
       return;
     }
