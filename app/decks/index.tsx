@@ -2,12 +2,8 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDeckStore } from "../../stores/useDeckStore";
+import { useDeckStore, Deck } from "../../stores/useDeckStore";
 import { generateDeckViaAI } from "../../utils/aiGenerator";
-import { seedStarterDecksIfEmpty } from "../../utils/deckImporter";
-import { Deck } from "../../stores/useDeckStore";
-import { syncCommunityDecksMeta } from "../../utils/cloudDecks";
-import { initDatabase } from "../../utils/database";
 import { useAppAlert } from "../_AppAlert";
 
 import AIForgeCard from "./_AIForgeCard";
@@ -29,27 +25,10 @@ export default function DecksScreen() {
   const [isCloudModalVisible, setIsCloudModalVisible] = useState(false);
 
   useEffect(() => {
-    initDeckFlow();
+    // DB initialization is already handled by the Home screen.
+    // We just refresh the local state here in case it was modified.
+    loadDecks();
   }, []);
-
-  const initDeckFlow = async () => {
-    try {
-      // Force the screen to wait for WebAssembly SQLite to finish setting up
-      await initDatabase();
-    } catch (e) {
-      console.warn("DB failed to initialize:", e);
-    }
-
-    await seedStarterDecksIfEmpty();
-    await loadDecks();
-
-    // Sync previously downloaded community decks that got stuck with the generic icon
-    const currentDecks = useDeckStore.getState().decks;
-    const didUpdate = await syncCommunityDecksMeta(currentDecks);
-    if (didUpdate) {
-      await loadDecks(); // reload decks from DB if updates applied
-    }
-  };
 
   const handleAIGenerate = async () => {
     if (!aiPrompt.trim()) return;
