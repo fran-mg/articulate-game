@@ -61,7 +61,6 @@ export default function PlayScreen() {
     nextCard,
   } = useGameStore();
 
-  // Derive everything from the shared theme — no hardcoded mode checks
   const { meta } = getModeTheme(mode);
 
   const [gameState, setGameState] = useState<
@@ -71,6 +70,9 @@ export default function PlayScreen() {
   const [flashState, setFlashState] = useState<CardFlashState>("default");
   const [displayTime, setDisplayTime] = useState(timerDuration);
 
+  const latestFlashState = useRef<CardFlashState>(flashState);
+  latestFlashState.current = flashState;
+
   const progress = useSharedValue(1);
   const currentEntity = participants[currentTurnIndex];
   const currentCard = cardsInRound[currentCardIndex];
@@ -78,7 +80,6 @@ export default function PlayScreen() {
     null,
   );
 
-  // 1. Orientation lock — driven by meta.orientation
   useEffect(() => {
     let isMounted = true;
     const applyOrientation = async () => {
@@ -97,11 +98,7 @@ export default function PlayScreen() {
           );
         }
       } catch (error) {
-        // Web browsers often reject orientation locks (requires fullscreen/permissions).
-        // We safely catch the error so the app doesn't crash!
-        console.log(
-          "Orientation lock bypassed: Not supported on this device/browser.",
-        );
+        console.log("Orientation lock bypassed: Not supported.");
       } finally {
         if (isMounted) {
           setGameState(
@@ -115,14 +112,12 @@ export default function PlayScreen() {
 
     return () => {
       isMounted = false;
-      // We also add .catch() to the cleanup so it doesn't crash when leaving the screen
       ScreenOrientation.lockAsync(
         ScreenOrientation.OrientationLock.PORTRAIT_UP,
       ).catch(() => {});
     };
   }, [meta.orientation]);
 
-  // 2. Countdown phase
   useEffect(() => {
     let countInterval: ReturnType<typeof setInterval>;
     if (gameState === "countdown") {
@@ -132,7 +127,6 @@ export default function PlayScreen() {
       progress.value = 1;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // ── SOUND: play the full 3-2-1-GO file once ──────────────────────────
       playSound("countdown");
 
       countInterval = setInterval(() => {
@@ -152,7 +146,6 @@ export default function PlayScreen() {
     };
   }, [gameState, timerDuration, startTurn, progress]);
 
-  // 3. Play phase
   useEffect(() => {
     if (gameState === "playing") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -186,6 +179,15 @@ export default function PlayScreen() {
     setGameState("timeup");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     playSound("time_up");
+
+    // Record currently visible card as a "pass" before ending the turn.
+    const state = useGameStore.getState();
+    const latestCard = state.cardsInRound[state.currentCardIndex];
+    if (latestFlashState.current === "default" && latestCard) {
+      // If the flash state isn't default, it means they clicked "pass" or "got it" right at the buzzer.
+      state.recordCardResult(latestCard.id, latestCard.word, "passed");
+    }
+
     setTimeout(() => {
       endTurn();
       ScreenOrientation.lockAsync(
@@ -210,7 +212,6 @@ export default function PlayScreen() {
 
     setFlashState(action === "guessed" ? "done" : "pass");
 
-    // ── SOUND: correct or pass ─────────────────────────────────────────────
     playSound(action === "guessed" ? "correct" : "pass");
 
     Haptics.impactAsync(
@@ -233,7 +234,6 @@ export default function PlayScreen() {
     }, 200);
   };
 
-  // Tilt — driven by meta.usesTilt
   useTiltControl(
     gameState === "playing" && flashState === "default" && meta.usesTilt,
     () => handleAction("passed"),
@@ -272,7 +272,6 @@ export default function PlayScreen() {
           displayTime={displayTime}
           timerDuration={timerDuration}
           onAction={handleAction}
-          // Both driven by meta — no hardcoded mode string checks here
           showButtons={meta.showsButtons}
         />
       </View>
