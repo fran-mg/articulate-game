@@ -15,7 +15,7 @@ interface ModeCardProps {
   modeKey: string;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
-  variant?: "default" | "soft"; // ── NEW: allows toggling visual style
+  variant?: "default" | "soft";
 }
 
 export default function ModeCard({

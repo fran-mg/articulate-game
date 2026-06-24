@@ -486,9 +486,13 @@ export default function PlayingCard({
   const { card: baseCardTheme, meta } = getModeTheme(mode);
 
   let tabooWords: string[] = [];
-  if (meta.showsTabooWords && currentCard?.taboo_words) {
+  if (meta.showsTabooWords && currentCard?.tabooWords) {
     try {
-      tabooWords = JSON.parse(currentCard.taboo_words);
+      // DB stores it as a JSON string, but we handle it just in case it's passed as an array
+      tabooWords =
+        typeof currentCard.tabooWords === "string"
+          ? JSON.parse(currentCard.tabooWords)
+          : currentCard.tabooWords;
     } catch {
       /* empty */
     }
