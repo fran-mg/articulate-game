@@ -24,8 +24,8 @@ const FONT_RANGE_MAX = 72; // Top of target range
 const FONT_RANGE_MIN = 44; // Bottom of target range — still big and clear
 const FONT_HARD_MIN = 22; // Absolute floor — never render smaller than this
 
-const WIDTH_SAFETY = 0.93; // Fraction of measured width we trust
-const CHAR_W_RATIO = 0.6; // Avg char width as fraction of fontSize (bold/heavy)
+const WIDTH_SAFETY = 0.85; // Fraction of measured width we trust
+const CHAR_W_RATIO = 0.75; // Avg char width as fraction of fontSize (bold/heavy)
 const LINE_H_RATIO = 1.2; // lineHeight = fontSize * this
 const STEP = 2; // Font size step when searching
 
@@ -390,45 +390,51 @@ function AdaptiveWordDisplay({
   return (
     <View style={styles.adaptiveContainer} onLayout={handleFaceLayout}>
       {/*
-        Inner cluster: phrase + doNotSay sit together, centred in the
-        full face area. We don't stretch either child — they take only
-        the height they need, and flexbox centres the pair vertically.
+        By absolutely positioning the cluster *after* the container is measured,
+        we prevent a React Native bug where a large initial text font stretches
+        the parent flex container beyond the screen bounds before onLayout fires.
       */}
-      <View style={styles.clusterWrapper}>
-        <Animated.View
-          style={[
-            styles.wordAnimWrapper,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <Text
+      {faceLayout && (
+        <View style={[styles.clusterWrapper, styles.clusterAbsolute]}>
+          <Animated.View
             style={[
-              styles.mainWord,
+              styles.wordAnimWrapper,
               {
-                fontSize: sizing.fontSize,
-                lineHeight: lineHeightAt(sizing.fontSize),
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
               },
             ]}
-            numberOfLines={sizing.numberOfLines}
-            adjustsFontSizeToFit={false}
-            lineBreakMode={sizing.allowWrap ? "tail" : "clip"}
           >
-            {word}
-          </Text>
-        </Animated.View>
+            {/* Wait for taboo height if needed to prevent 1-frame layout flashes */}
+            {(!showTabooWords || tabooHeight > 0) && (
+              <Text
+                style={[
+                  styles.mainWord,
+                  {
+                    fontSize: sizing.fontSize,
+                    lineHeight: lineHeightAt(sizing.fontSize),
+                  },
+                ]}
+                numberOfLines={sizing.numberOfLines}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.4}
+                ellipsizeMode="clip"
+              >
+                {word}
+              </Text>
+            )}
+          </Animated.View>
 
-        {showTabooWords && (
-          <View style={styles.tabooRegion} onLayout={handleTabooLayout}>
-            <View
-              style={[styles.wordDivider, { backgroundColor: innerBorder }]}
-            />
-            <TabooWordsList words={tabooWords} accentColor={accentColor} />
-          </View>
-        )}
-      </View>
+          {showTabooWords && (
+            <View style={styles.tabooRegion} onLayout={handleTabooLayout}>
+              <View
+                style={[styles.wordDivider, { backgroundColor: innerBorder }]}
+              />
+              <TabooWordsList words={tabooWords} accentColor={accentColor} />
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -719,6 +725,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 24,
   },
+  clusterAbsolute: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+  },
   wordAnimWrapper: {
     width: "100%",
     alignItems: "center",
@@ -732,7 +746,8 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.35)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
-    flexShrink: 0,
+    flexShrink: 1,
+    width: "100%",
   },
   tabooRegion: {
     width: "100%",
