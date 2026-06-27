@@ -63,7 +63,7 @@ export default function CreateDeckModal({
   onCreated,
 }: CreateDeckModalProps) {
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Custom");
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(COLORS[0]);
   const [icon, setIcon] = useState(ICONS[0]);
@@ -71,7 +71,7 @@ export default function CreateDeckModal({
 
   const { playSound } = useSoundManager(["click", "download"]);
 
-  const isComplete = name.trim().length >= 3 && category.trim().length >= 3;
+  const isComplete = name.trim().length >= 3;
 
   const handleSave = async () => {
     if (!isComplete) return;
@@ -81,7 +81,7 @@ export default function CreateDeckModal({
       await dbHelpers.createDeck(
         name.trim(),
         category.trim(),
-        "user-created", // Essential flag for filtering later
+        "user-created", // Automatically puts it in "My Decks" filter
         icon,
         color,
         description.trim(),
@@ -91,7 +91,7 @@ export default function CreateDeckModal({
 
       // Reset state for next time
       setName("");
-      setCategory("Custom");
+      setCategory("");
       setDescription("");
       setColor(COLORS[0]);
       setIcon(ICONS[0]);
@@ -148,10 +148,10 @@ export default function CreateDeckModal({
           </View>
 
           <View>
-            <Text style={styles.formLabel}>Category *</Text>
+            <Text style={styles.formLabel}>Category</Text>
             <TextInput
               style={styles.formInput}
-              placeholder="e.g. Friends, Custom, Work"
+              placeholder="e.g. Friends, Movies, Work"
               placeholderTextColor="#475569"
               value={category}
               onChangeText={setCategory}
