@@ -15,16 +15,15 @@ import { useSoundManager } from "../../../../hooks/useSoundManager";
 import { styles } from "../../Decks.styles";
 
 const COLORS = [
-  "#6366f1", // Indigo
-  "#22C55E", // Green
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#8B5CF6", // Purple
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
-  "#f1f5f9", // Slate
+  "#6366f1",
+  "#22C55E",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+  "#06B6D4",
+  "#f1f5f9",
 ];
-
 const ICONS = [
   "Layers",
   "Star",
@@ -40,7 +39,6 @@ const ICONS = [
   "Coffee",
 ];
 
-// Reusing your icon lookup logic
 const getLucideIcon = (iconName: string, Fallback: any) => {
   if (!iconName) return Fallback;
   const pascal = iconName.replace(/(^\w|-\w)/g, (clear) =>
@@ -70,33 +68,27 @@ export default function CreateDeckModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const { playSound } = useSoundManager(["click", "download"]);
-
   const isComplete = name.trim().length >= 3;
 
   const handleSave = async () => {
     if (!isComplete) return;
     setIsSaving(true);
     try {
-      // We inject directly into the existing SQLite system as user-created.
       await dbHelpers.createDeck(
         name.trim(),
         category.trim(),
-        "user-created", // Automatically puts it in "My Decks" filter
+        "user-created",
         icon,
         color,
         description.trim(),
       );
-
       playSound("download");
-
-      // Reset state for next time
       setName("");
       setCategory("");
       setDescription("");
       setColor(COLORS[0]);
       setIcon(ICONS[0]);
-
-      onCreated(); // Triggers UI reload and alerts
+      onCreated();
       onClose();
     } catch (err) {
       console.error(err);
@@ -112,7 +104,6 @@ export default function CreateDeckModal({
       presentationStyle="pageSheet"
     >
       <SafeAreaView style={styles.root}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.pageEyebrow}>Forge</Text>
@@ -126,16 +117,12 @@ export default function CreateDeckModal({
             <LucideIcons.X color="#cbd5e1" size={20} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
-
         <View style={styles.divider} />
-
         <ScrollView
-          style={styles.scroll}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.formContent}
-          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Text Inputs */}
           <View>
             <Text style={styles.formLabel}>Pack Name *</Text>
             <TextInput
@@ -146,9 +133,8 @@ export default function CreateDeckModal({
               onChangeText={setName}
             />
           </View>
-
           <View>
-            <Text style={styles.formLabel}>Category</Text>
+            <Text style={styles.formLabel}>Category (Optional)</Text>
             <TextInput
               style={styles.formInput}
               placeholder="e.g. Friends, Movies, Work"
@@ -157,7 +143,6 @@ export default function CreateDeckModal({
               onChangeText={setCategory}
             />
           </View>
-
           <View>
             <Text style={styles.formLabel}>Description</Text>
             <TextInput
@@ -169,8 +154,6 @@ export default function CreateDeckModal({
               multiline
             />
           </View>
-
-          {/* Color Picker */}
           <Text style={styles.formLabel}>Theme Colour</Text>
           <ScrollView
             horizontal
@@ -190,8 +173,6 @@ export default function CreateDeckModal({
               />
             ))}
           </ScrollView>
-
-          {/* Icon Picker */}
           <Text style={styles.formLabel}>Pack Icon</Text>
           <View style={styles.iconGrid}>
             {ICONS.map((i) => {
@@ -216,8 +197,6 @@ export default function CreateDeckModal({
               );
             })}
           </View>
-
-          {/* Submit Button */}
           <TouchableOpacity
             style={[styles.saveBtn, !isComplete && styles.saveBtnDisabled]}
             onPress={handleSave}
