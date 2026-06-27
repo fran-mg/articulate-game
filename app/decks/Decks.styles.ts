@@ -433,4 +433,68 @@ export const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.5,
   },
+  // ── Action Row (Create & Download) ───────────────────────────────────────
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 6,
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row", // <--- Puts icon and text side-by-side
+    alignItems: "center", // <--- Vertically centers them
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  actionBtnCreate: {
+    backgroundColor: "rgba(16,185,129,0.06)",
+    borderColor: "rgba(16,185,129,0.18)",
+  },
+  actionBtnDownload: {
+    backgroundColor: "rgba(99,102,241,0.06)",
+    borderColor: "rgba(99,102,241,0.18)",
+  },
+  actionBtnIconWrapCreate: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(16,185,129,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  actionBtnIconWrapDownload: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(99,102,241,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  actionBtnTextWrap: {
+    flex: 1, // Lets text take up the rest of the space and wrap if needed
+    justifyContent: "center",
+    gap: 1,
+  },
+  actionBtnTitleCreate: {
+    color: "#10b981",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  actionBtnTitleDownload: {
+    color: "#818cf8",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  actionBtnDesc: {
+    color: "#94a3b8",
+    fontSize: 10,
+    fontWeight: "600",
+  },
 });

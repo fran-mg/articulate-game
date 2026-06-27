@@ -12,8 +12,8 @@ import DeckList from "./_DeckList";
 import PageHeader from "./_PageHeader";
 import CloudDecksModal from "./_DownloadDecks";
 import EditDeckModal from "./_EditDeck";
-import CreateDeckCard from "./_CreateDeckCard";
 import CreateDeckModal from "./_CreateDeckModal";
+import DeckActionsRow from "./_DeckActionsRow";
 import { styles } from "./Decks.styles";
 
 export default function DecksScreen() {
@@ -71,7 +71,7 @@ export default function DecksScreen() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <PageHeader onCloudPress={() => setIsCloudModalVisible(true)} />
+      <PageHeader />
 
       <ScrollView
         style={styles.scroll}
@@ -88,7 +88,11 @@ export default function DecksScreen() {
           />
         )}
 
-        <CreateDeckCard onPress={() => setIsCreateModalVisible(true)} />
+        {/* Replaced Create Card with the Side-By-Side Row */}
+        <DeckActionsRow
+          onCreatePress={() => setIsCreateModalVisible(true)}
+          onDownloadPress={() => setIsCloudModalVisible(true)}
+        />
 
         <CategoryFilter
           categories={categories}
