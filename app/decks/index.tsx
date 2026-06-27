@@ -6,13 +6,13 @@ import { useDeckStore, Deck } from "../../stores/useDeckStore";
 import { generateDeckViaAI } from "../../utils/aiGenerator";
 import { useAppAlert } from "../_AppAlert";
 
-import AIForgeCard from "./_AIForgeCard";
-import CategoryFilter from "./_CategoryFilter";
-import DeckList from "./_DeckList";
+import AIForgeCard from "./deck-aigeneration-unused/_AIForgeCard";
+import CategoryFilter from "./deck-display/_CategoryFilter";
+import DeckList from "./deck-display/_DeckList";
 import PageHeader from "./_PageHeader";
-import CloudDecksModal from "./_DownloadDecks";
-import EditDeckModal from "./_EditDeck";
-import CreateDeckModal from "./_CreateDeckModal";
+import CloudDecksModal from "./deck-actions/_DownloadDecks";
+import EditDeckModal from "./deck-actions/_EditDeck";
+import CreateDeckModal from "./deck-actions/deck-create/_CreateDeckModal";
 import DeckActionsRow from "./_DeckActionsRow";
 import { styles } from "./Decks.styles";
 

@@ -1,7 +1,7 @@
 import * as LucideIcons from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { styles } from "./Decks.styles";
+import { styles } from "../../Decks.styles";
 
 interface Props {
   onPress: () => void;

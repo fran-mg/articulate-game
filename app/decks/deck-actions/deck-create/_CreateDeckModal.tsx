@@ -10,9 +10,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { dbHelpers } from "../../utils/database";
-import { useSoundManager } from "../../hooks/useSoundManager";
-import { styles } from "./Decks.styles";
+import { dbHelpers } from "../../../../utils/database";
+import { useSoundManager } from "../../../../hooks/useSoundManager";
+import { styles } from "../../Decks.styles";
 
 const COLORS = [
   "#6366f1", // Indigo

@@ -14,9 +14,9 @@ import {
   CloudDeckIndexItem,
   downloadAndImportDeck,
   fetchCloudDecksIndex,
-} from "../../utils/cloudDecks";
-import { useSoundManager } from "../../hooks/useSoundManager";
-import { useAppAlert } from "../_AppAlert";
+} from "../../../utils/cloudDecks";
+import { useSoundManager } from "../../../hooks/useSoundManager";
+import { useAppAlert } from "../../_AppAlert";
 
 interface CloudDecksModalProps {
   visible: boolean;

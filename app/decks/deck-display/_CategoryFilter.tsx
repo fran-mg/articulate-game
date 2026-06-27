@@ -1,6 +1,6 @@
 import React from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
-import { styles } from "./Decks.styles";
+import { styles } from "../Decks.styles";
 
 interface Props {
   categories: string[];

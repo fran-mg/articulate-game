@@ -1,9 +1,9 @@
 import * as LucideIcons from "lucide-react-native";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { Deck } from "../../stores/useDeckStore";
-import { useSoundManager } from "../../hooks/useSoundManager";
-import { styles } from "./Decks.styles";
+import { Deck } from "../../../stores/useDeckStore";
+import { useSoundManager } from "../../../hooks/useSoundManager";
+import { styles } from "../Decks.styles";
 
 // Known icon name remaps — handles renamed or swapped Lucide icons
 const ICON_REMAPS: Record<string, string> = {

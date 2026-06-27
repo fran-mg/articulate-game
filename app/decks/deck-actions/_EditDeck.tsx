@@ -10,8 +10,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import db, { dbHelpers } from "../../utils/database";
-import { useSoundManager } from "../../hooks/useSoundManager";
+import db, { dbHelpers } from "../../../utils/database";
+import { useSoundManager } from "../../../hooks/useSoundManager";
 
 // Helper to reliably map icon names
 const getLucideIcon = (iconName: string | undefined, Fallback: any) => {
