@@ -11,7 +11,7 @@ import CategoryFilter from "./deck-display/_CategoryFilter";
 import DeckList from "./deck-display/_DeckList";
 import PageHeader from "./_PageHeader";
 import CloudDecksModal from "./deck-actions/_DownloadDecks";
-import EditDeckModal from "./deck-actions/_EditDeck";
+import EditDeckModal from "./deck-actions/deck-edit/_EditDeck";
 import CreateDeckModal from "./deck-actions/deck-create/_CreateDeckModal";
 import DeckActionsRow from "./_DeckActionsRow";
 import { styles } from "./Decks.styles";
@@ -53,7 +53,7 @@ export default function DecksScreen() {
 
   // Generate Filter Categories — forcing "my decks" to appear first
   const baseCategories = Array.from(
-    new Set(decks.map((d) => d.category.toLowerCase())),
+    new Set(decks.map((d) => d.category?.trim().toLowerCase()).filter(Boolean)),
   );
   const categories = [
     "all",
