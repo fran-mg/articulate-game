@@ -12,6 +12,8 @@ import DeckList from "./_DeckList";
 import PageHeader from "./_PageHeader";
 import CloudDecksModal from "./_DownloadDecks";
 import EditDeckModal from "./_EditDeck";
+import CreateDeckCard from "./_CreateDeckCard";
+import CreateDeckModal from "./_CreateDeckModal";
 import { styles } from "./Decks.styles";
 
 export default function DecksScreen() {
@@ -22,11 +24,12 @@ export default function DecksScreen() {
   const [aiPrompt, setAiPrompt] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
+
+  // Modals
   const [isCloudModalVisible, setIsCloudModalVisible] = useState(false);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
   useEffect(() => {
-    // DB initialization is already handled by the Home screen.
-    // We just refresh the local state here in case it was modified.
     loadDecks();
   }, []);
 
@@ -48,15 +51,23 @@ export default function DecksScreen() {
     }
   };
 
+  // Generate Filter Categories — forcing "my decks" to appear first
+  const baseCategories = Array.from(
+    new Set(decks.map((d) => d.category.toLowerCase())),
+  );
   const categories = [
     "all",
-    ...Array.from(new Set(decks.map((d) => d.category.toLowerCase()))),
+    "my decks",
+    ...baseCategories.filter((c) => c !== "my decks"),
   ];
 
+  // Apply Filtering
   const filteredDecks =
     activeTab === "all"
       ? decks
-      : decks.filter((d) => d.category.toLowerCase() === activeTab);
+      : activeTab === "my decks"
+        ? decks.filter((d) => d.source === "user-created")
+        : decks.filter((d) => d.category.toLowerCase() === activeTab);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -77,6 +88,8 @@ export default function DecksScreen() {
           />
         )}
 
+        <CreateDeckCard onPress={() => setIsCreateModalVisible(true)} />
+
         <CategoryFilter
           categories={categories}
           activeTab={activeTab}
@@ -90,12 +103,29 @@ export default function DecksScreen() {
         />
       </ScrollView>
 
+      {/* Cloud Store Modal */}
       <CloudDecksModal
         visible={isCloudModalVisible}
         onClose={() => setIsCloudModalVisible(false)}
         onDecksUpdated={loadDecks}
         installedDecks={decks}
       />
+
+      {/* Creation Modal */}
+      <CreateDeckModal
+        visible={isCreateModalVisible}
+        onClose={() => setIsCreateModalVisible(false)}
+        onCreated={async () => {
+          await loadDecks();
+          setActiveTab("my decks");
+          showAlert(
+            "Pack Created!",
+            "Tap the pencil icon on your new pack to start adding words.",
+          );
+        }}
+      />
+
+      {/* Edit Deck Words Modal */}
       <EditDeckModal
         deck={editingDeck}
         onClose={() => setEditingDeck(null)}

@@ -12,6 +12,7 @@ export interface Deck {
   color: string;
   url: string;
   cardCount: number;
+  source: string;
 }
 
 export interface Card {
@@ -53,6 +54,7 @@ function toPublicDeck(row: DeckRow): Deck {
     color: row.color,
     url: row.url,
     cardCount: row.cardCount,
+    source: row.source,
   };
 }
 
