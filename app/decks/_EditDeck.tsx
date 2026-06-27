@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import db from "../../utils/database";
+import db, { dbHelpers } from "../../utils/database";
 import { useSoundManager } from "../../hooks/useSoundManager";
 
 // Helper to reliably map icon names
@@ -40,63 +40,56 @@ export default function EditDeckModal({
 
   const { playSound } = useSoundManager(["download", "bin"]);
 
+  // Ensure we reload whenever the 'deck' prop changes
   useEffect(() => {
-    if (deck) loadCards();
-    else setCards([]);
+    if (deck) {
+      loadCards();
+    } else {
+      setCards([]);
+    }
   }, [deck]);
 
   const loadCards = async () => {
-    if (!db || !deck) return;
+    if (!deck) return;
     try {
-      const result = await db.getAllAsync(
-        "SELECT * FROM cards WHERE deck_id = ? ORDER BY id DESC;",
-        [deck.id],
-      );
-      setCards(result as any[]);
+      // Use dbHelpers instead of raw query for better consistency
+      const fetchedCards = await dbHelpers.getCardsForDeck(Number(deck.id));
+      setCards(fetchedCards);
     } catch (err) {
-      console.error(err);
+      console.error("Error loading cards:", err);
     }
   };
 
   const handleAddCard = async () => {
+    if (!newWord.trim() || !deck) return;
+
     playSound("download");
-    if (!newWord.trim().toUpperCase() || !deck || !db) return;
     try {
-      await db.runAsync(
-        "INSERT INTO cards (deck_id, word, taboo_words, chardes_hint, password_hint) VALUES (?, ?, ?, ?, ?);",
-        [deck.id, newWord.trim().toUpperCase(), JSON.stringify([]), "", ""],
+      await dbHelpers.createCard(
+        Number(deck.id),
+        newWord.trim().toUpperCase(),
+        [], // No taboo words initially
+        "",
+        "",
       );
-      await db.runAsync(
-        "UPDATE decks SET card_count = card_count + 1 WHERE id = ?;",
-        [deck.id],
-      );
+
       setNewWord("");
-      await loadCards();
-      await onDecksUpdated();
+      await loadCards(); // Refresh local list
+      await onDecksUpdated(); // Refresh parent list (for card count update)
     } catch (err) {
-      console.error(err);
+      console.error("Error adding card:", err);
     }
   };
 
   const handleDeleteCard = async (cardId: number) => {
     playSound("bin");
-    if (!db || !deck) return;
     try {
-      await db.runAsync("DELETE FROM cards WHERE id = ?;", [cardId]);
-      await db.runAsync(
-        "UPDATE decks SET card_count = MAX(0, card_count - 1) WHERE id = ?;",
-        [deck.id],
-      );
-      await loadCards();
-      await onDecksUpdated();
+      await dbHelpers.deleteCard(cardId);
+      await loadCards(); // Refresh local list
+      await onDecksUpdated(); // Refresh parent list
     } catch (err) {
-      console.error(err);
+      console.error("Error deleting card:", err);
     }
-  };
-
-  const handleClose = () => {
-    setNewWord("");
-    onClose();
   };
 
   const deckColor = deck?.color || "#3B82F6";
@@ -128,9 +121,11 @@ export default function EditDeckModal({
               >
                 <DeckIcon color={deckColor} size={18} strokeWidth={2} />
               </View>
-              <Text style={styles.deckName}>{deck?.name}</Text>
+              <Text style={styles.deckName} numberOfLines={1}>
+                {deck?.name}
+              </Text>
               <TouchableOpacity
-                onPress={handleClose}
+                onPress={onClose}
                 style={styles.closeBtn}
                 activeOpacity={0.7}
               >
@@ -198,14 +193,10 @@ export default function EditDeckModal({
                 <View
                   style={[styles.cardBullet, { backgroundColor: deckColor }]}
                 />
-                <Text style={styles.cardWord} numberOfLines={1}>
-                  {card.word}
-                </Text>
+                <Text style={styles.cardWord}>{card.word}</Text>
                 <TouchableOpacity
                   onPress={() => handleDeleteCard(card.id)}
                   style={styles.deleteBtn}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  activeOpacity={0.7}
                 >
                   <LucideIcons.X color="#f87171" size={14} strokeWidth={2.5} />
                 </TouchableOpacity>
