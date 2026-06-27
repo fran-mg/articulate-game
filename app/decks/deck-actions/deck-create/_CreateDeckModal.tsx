@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { dbHelpers } from "../../../../utils/database";
 import { useSoundManager } from "../../../../hooks/useSoundManager";
-import { styles } from "../../Decks.styles";
+import { styles } from "./CreateDeck.styles";
+import { styles as stylesA } from "../DeckActions.styles";
 
 const COLORS = [
   "#6366f1",
@@ -124,9 +125,9 @@ export default function CreateDeckModal({
           keyboardShouldPersistTaps="handled"
         >
           <View>
-            <Text style={styles.formLabel}>Pack Name *</Text>
+            <Text style={stylesA.formLabel}>Pack Name *</Text>
             <TextInput
-              style={styles.formInput}
+              style={stylesA.formInput}
               placeholder="e.g. Office Inside Jokes"
               placeholderTextColor="#475569"
               value={name}
@@ -134,9 +135,9 @@ export default function CreateDeckModal({
             />
           </View>
           <View>
-            <Text style={styles.formLabel}>Category (Optional)</Text>
+            <Text style={stylesA.formLabel}>Category (Optional)</Text>
             <TextInput
-              style={styles.formInput}
+              style={stylesA.formInput}
               placeholder="e.g. Friends, Movies, Work"
               placeholderTextColor="#475569"
               value={category}
@@ -144,9 +145,9 @@ export default function CreateDeckModal({
             />
           </View>
           <View>
-            <Text style={styles.formLabel}>Description</Text>
+            <Text style={stylesA.formLabel}>Description</Text>
             <TextInput
-              style={[styles.formInput, styles.formInputMultiline]}
+              style={[stylesA.formInput, stylesA.formInputMultiline]}
               placeholder="What is this pack about?"
               placeholderTextColor="#475569"
               value={description}
@@ -154,7 +155,7 @@ export default function CreateDeckModal({
               multiline
             />
           </View>
-          <Text style={styles.formLabel}>Theme Colour</Text>
+          <Text style={stylesA.formLabel}>Theme Colour</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -173,7 +174,7 @@ export default function CreateDeckModal({
               />
             ))}
           </ScrollView>
-          <Text style={styles.formLabel}>Pack Icon</Text>
+          <Text style={stylesA.formLabel}>Pack Icon</Text>
           <View style={styles.iconGrid}>
             {ICONS.map((i) => {
               const IconComp = getLucideIcon(i, LucideIcons.Layers);
@@ -198,7 +199,7 @@ export default function CreateDeckModal({
             })}
           </View>
           <TouchableOpacity
-            style={[styles.saveBtn, !isComplete && styles.saveBtnDisabled]}
+            style={[stylesA.saveBtn, !isComplete && stylesA.saveBtnDisabled]}
             onPress={handleSave}
             disabled={!isComplete || isSaving}
             activeOpacity={0.8}
@@ -208,7 +209,7 @@ export default function CreateDeckModal({
             ) : (
               <>
                 <LucideIcons.Save size={18} color="#fff" strokeWidth={2.5} />
-                <Text style={styles.saveBtnText}>Save to Library</Text>
+                <Text style={stylesA.saveBtnText}>Save to Library</Text>
               </>
             )}
           </TouchableOpacity>
