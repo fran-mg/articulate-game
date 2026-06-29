@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { styles } from "../Decks.styles";
+import { styles as stylesA } from "./AiDecks.styles";
 
 interface Props {
   prompt: string;
@@ -25,7 +26,7 @@ export default function AIForgeCard({
   const isDisabled = isGenerating || !prompt.trim();
 
   return (
-    <View style={styles.card}>
+    <View style={styles.deckCard}>
       <View style={styles.cardShine} pointerEvents="none" />
 
       <View style={styles.sectionLabelRow}>
@@ -35,17 +36,17 @@ export default function AIForgeCard({
         </Text>
       </View>
 
-      <Text style={styles.aiSubtitle}>
+      <Text style={stylesA.aiSubtitle}>
         Describe a theme and AI will generate a full card pack for you.
       </Text>
 
-      <View style={styles.aiInputRow}>
+      <View style={stylesA.aiInputRow}>
         <TextInput
           placeholder="e.g. 90s Cartoons, Space Exploration..."
           placeholderTextColor="#64748b"
           value={prompt}
           onChangeText={onChangePrompt}
-          style={styles.aiInput}
+          style={stylesA.aiInput}
           returnKeyType="done"
           onSubmitEditing={onGenerate}
         />
@@ -53,7 +54,7 @@ export default function AIForgeCard({
           onPress={onGenerate}
           disabled={isDisabled}
           activeOpacity={0.75}
-          style={[styles.aiForgeBtn, isDisabled && styles.aiForgeBtnDisabled]}
+          style={[stylesA.aiForgeBtn, isDisabled && stylesA.aiForgeBtnDisabled]}
         >
           {isGenerating ? (
             <ActivityIndicator size="small" color="#a78bfa" />

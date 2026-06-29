@@ -105,23 +105,4 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  // ── Shared card ──────────────────────────────────────────────────────────
-  card: {
-    backgroundColor: "#0f172a",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    borderRadius: 24,
-    padding: 20,
-    overflow: "hidden",
-  },
-  cardShine: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "35%",
-    backgroundColor: "rgba(255,255,255,0.025)",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
 });
