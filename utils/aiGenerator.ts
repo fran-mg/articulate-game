@@ -4,13 +4,62 @@ export interface GenerationResult {
   error?: string;
 }
 
-// Fallback list of Groq models. It attempts them in order.
-const GROQ_MODELS = [
-  "llama3-70b-8192",
-  "llama3-8b-8192",
-  "mixtral-8x7b-32768",
-  "gemma-7b-it",
+// Hardcoded safe fallbacks based on your dashboard, just in case the /models endpoint fails
+const DEFAULT_FALLBACK_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "qwen/qwen3.6-27b",
+  "qwen/qwen3-32b",
 ];
+
+/**
+ * Dynamically fetches all available models from Groq for your account,
+ * filtering out utility models (like prompt-guard) that can't generate decks.
+ */
+const fetchAvailableModels = async (apiKey: string): Promise<string[]> => {
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!res.ok) {
+      console.warn("[AI] Failed to fetch dynamic models. Using defaults.");
+      return DEFAULT_FALLBACK_MODELS;
+    }
+
+    const data = await res.json();
+
+    // Extract IDs and filter out audio/vision/guard models
+    const activeModels = data.data
+      .map((m: any) => m.id)
+      .filter(
+        (id: string) =>
+          !id.includes("whisper") &&
+          !id.includes("prompt-guard") &&
+          !id.includes("safeguard"),
+      );
+
+    // If we successfully got models, return them. Ensure our preferred model is first.
+    if (activeModels.length > 0) {
+      // Try to put a smart/versatile model at the top of the queue if it exists
+      const preferred = activeModels.find(
+        (m: string) => m.includes("70b") || m.includes("llama-3.3"),
+      );
+      if (preferred) {
+        return [
+          preferred,
+          ...activeModels.filter((m: string) => m !== preferred),
+        ];
+      }
+      return activeModels;
+    }
+
+    return DEFAULT_FALLBACK_MODELS;
+  } catch (error) {
+    console.warn("[AI] Network error fetching models. Using defaults.");
+    return DEFAULT_FALLBACK_MODELS;
+  }
+};
 
 export const generateDeckViaAI = async (
   categoryName: string,
@@ -41,8 +90,15 @@ export const generateDeckViaAI = async (
 
   let lastError = "Unknown generation error.";
 
-  // Model Fallback Manager
-  for (const model of GROQ_MODELS) {
+  // 1. Get the live list of models your account is allowed to use right now
+  const modelsToTry = await fetchAvailableModels(apiKey);
+  console.log(
+    `[AI] Retrieved ${modelsToTry.length} models to try:`,
+    modelsToTry,
+  );
+
+  // 2. Fallback Loop Manager
+  for (const model of modelsToTry) {
     try {
       console.log(`[AI Generator] Attempting with model: ${model}`);
 
@@ -63,10 +119,16 @@ export const generateDeckViaAI = async (
       );
 
       if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
         if (response.status === 429) {
           throw new Error(`Rate limited on ${model}`);
         }
-        throw new Error(`API Error ${response.status} on ${model}`);
+        if (errData.error?.code === "model_decommissioned") {
+          throw new Error(`${model} is decommissioned`);
+        }
+        throw new Error(
+          `API Error ${response.status} on ${model}: ${errData.error?.message || ""}`,
+        );
       }
 
       const data = await response.json();
@@ -77,11 +139,21 @@ export const generateDeckViaAI = async (
         .replace(/^```json\s*/i, "")
         .replace(/\s*```$/i, "")
         .trim();
-      const parsedData = JSON.parse(jsonString);
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(jsonString);
+      } catch (parseError) {
+        throw new Error(
+          `Malformed JSON output from ${model}. Moving to next model.`,
+        );
+      }
 
       // Verify the essential array exists
       if (!parsedData.cards || !Array.isArray(parsedData.cards)) {
-        throw new Error(`Malformed JSON structure from ${model}`);
+        throw new Error(
+          `Invalid JSON schema from ${model}. Moving to next model.`,
+        );
       }
 
       // Formatting correctly for the repository
@@ -105,16 +177,17 @@ export const generateDeckViaAI = async (
         })),
       };
 
+      console.log(`[AI Generator] Success using ${model}!`);
       return { success: true, deck: completeDeck };
     } catch (error: any) {
       console.warn(`[AI Generator] ${model} failed:`, error.message);
       lastError = error.message;
-      // Loop continues to try the next model
+      // Loop continues to try the next model automatically
     }
   }
 
   return {
     success: false,
-    error: `All AI models failed. Last error: ${lastError}`,
+    error: `All available models failed. Last error: ${lastError}`,
   };
 };
