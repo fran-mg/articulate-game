@@ -9,10 +9,10 @@ export const styles = StyleSheet.create({
   pageHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
+    gap: 12,
   },
   iconBtn: {
     width: 40,
@@ -30,6 +30,7 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 2.5,
     textTransform: "uppercase",
+    marginBottom: 2,
   },
   pageTitle: {
     color: "#f1f5f9",
