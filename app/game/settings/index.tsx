@@ -31,7 +31,7 @@ import ModeCard from "../../modes/_ModeCard";
 
 export default function SettingsScreen() {
   const params = useLocalSearchParams();
-  const [selectedMode] = useState(() => (params.mode as any) || "articulate");
+  const [selectedMode] = useState(() => (params.mode as any) || "headsup");
 
   const accent = getModeAccent(selectedMode);
   const gameStore = useGameStore();

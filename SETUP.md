@@ -22,8 +22,8 @@
 mkdir -p ~/projects
 cd ~/projects
 
-git clone https://github.com/fran-mg/articulate-game.git
-cd articulate-game
+git clone https://github.com/fran-mg/rumble-game.git
+cd rumble-game
 
 code .
 pwd

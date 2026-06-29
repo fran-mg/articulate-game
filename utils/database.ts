@@ -1,7 +1,7 @@
 import * as SQLite from "expo-sqlite";
 import { Platform } from "react-native";
 
-const DB_NAME = "articulate_v6.db";
+const DB_NAME = "rumble_v7.db";
 
 let db: SQLite.SQLiteDatabase | null = null;
 let initPromise: Promise<void> | null = null; // Add a promise lock tracker
