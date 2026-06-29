@@ -3,10 +3,8 @@ import { useState, useEffect } from "react";
 import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDeckStore, Deck } from "../../stores/useDeckStore";
-import { generateDeckViaAI } from "../../utils/aiGenerator";
 import { useAppAlert } from "../_AppAlert";
 
-import AIForgeCard from "./deck-aigeneration-unused/_AIForgeCard";
 import CategoryFilter from "./deck-display/_CategoryFilter";
 import DeckList from "./deck-display/_DeckList";
 import PageHeader from "./_PageHeader";
@@ -21,8 +19,6 @@ export default function DecksScreen() {
   const { showAlert, AlertRender } = useAppAlert();
 
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [aiPrompt, setAiPrompt] = useState<string>("");
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
 
   // Modals
@@ -33,41 +29,33 @@ export default function DecksScreen() {
     loadDecks();
   }, []);
 
-  const handleAIGenerate = async () => {
-    if (!aiPrompt.trim()) return;
-    setIsGenerating(true);
-    const result = await generateDeckViaAI(
-      aiPrompt,
-      process.env.EXPO_PUBLIC_GROQ_API_KEY ?? "",
-    );
-    setIsGenerating(false);
-
-    if (result.success) {
-      setAiPrompt("");
-      await loadDecks();
-      showAlert("Pack Created", "Your custom card pack has been added.");
-    } else {
-      showAlert("Generation Failed", result.error ?? "Review network logs.");
-    }
-  };
-
-  // Generate Filter Categories — forcing "my decks" to appear first
+  // 1. Extract natural categories from DB (ignoring system labels)
   const baseCategories = Array.from(
     new Set(decks.map((d) => d.category?.trim().toLowerCase()).filter(Boolean)),
   );
+
+  // 2. Remove "my decks" and "community generated" from base categories if they happen to exist there
+  const filteredBase = baseCategories.filter(
+    (c) => c !== "my decks" && c !== "community generated",
+  );
+
+  // 3. Assemble Categories Bar with our custom System Tabs pinned at the front
   const categories = [
     "all",
     "my decks",
-    ...baseCategories.filter((c) => c !== "my decks"),
+    "community generated", // <--- NEW AI CATEGORY TAB
+    ...filteredBase,
   ];
 
-  // Apply Filtering
+  // 4. Handle actual list Filtering
   const filteredDecks =
     activeTab === "all"
       ? decks
       : activeTab === "my decks"
         ? decks.filter((d) => d.source === "user-created")
-        : decks.filter((d) => d.category.toLowerCase() === activeTab);
+        : activeTab === "community generated"
+          ? decks.filter((d) => d.source === "community") // Catches all cloud downloads
+          : decks.filter((d) => d.category?.toLowerCase() === activeTab);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -79,16 +67,6 @@ export default function DecksScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {false && (
-          <AIForgeCard
-            prompt={aiPrompt}
-            isGenerating={isGenerating}
-            onChangePrompt={setAiPrompt}
-            onGenerate={handleAIGenerate}
-          />
-        )}
-
-        {/* Replaced Create Card with the Side-By-Side Row */}
         <DeckActionsRow
           onCreatePress={() => setIsCreateModalVisible(true)}
           onDownloadPress={() => setIsCloudModalVisible(true)}
@@ -107,7 +85,6 @@ export default function DecksScreen() {
         />
       </ScrollView>
 
-      {/* Cloud Store Modal */}
       <CloudDecksModal
         visible={isCloudModalVisible}
         onClose={() => setIsCloudModalVisible(false)}
@@ -115,7 +92,6 @@ export default function DecksScreen() {
         installedDecks={decks}
       />
 
-      {/* Creation Modal */}
       <CreateDeckModal
         visible={isCreateModalVisible}
         onClose={() => setIsCreateModalVisible(false)}
@@ -129,7 +105,6 @@ export default function DecksScreen() {
         }}
       />
 
-      {/* Edit Deck Words Modal */}
       <EditDeckModal
         deck={editingDeck}
         onClose={() => setEditingDeck(null)}

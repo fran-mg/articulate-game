@@ -1,10 +1,10 @@
 export interface GenerationResult {
   success: boolean;
-  deck?: any;
+  indexMeta?: any;
+  deckFile?: any;
   error?: string;
 }
 
-// Hardcoded safe fallbacks based on your dashboard, just in case the /models endpoint fails
 const DEFAULT_FALLBACK_MODELS = [
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
@@ -12,24 +12,15 @@ const DEFAULT_FALLBACK_MODELS = [
   "qwen/qwen3-32b",
 ];
 
-/**
- * Dynamically fetches all available models from Groq for your account,
- * filtering out utility models (like prompt-guard) that can't generate decks.
- */
 const fetchAvailableModels = async (apiKey: string): Promise<string[]> => {
   try {
     const res = await fetch("https://api.groq.com/openai/v1/models", {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
 
-    if (!res.ok) {
-      console.warn("[AI] Failed to fetch dynamic models. Using defaults.");
-      return DEFAULT_FALLBACK_MODELS;
-    }
+    if (!res.ok) return DEFAULT_FALLBACK_MODELS;
 
     const data = await res.json();
-
-    // Extract IDs and filter out audio/vision/guard models
     const activeModels = data.data
       .map((m: any) => m.id)
       .filter(
@@ -39,9 +30,7 @@ const fetchAvailableModels = async (apiKey: string): Promise<string[]> => {
           !id.includes("safeguard"),
       );
 
-    // If we successfully got models, return them. Ensure our preferred model is first.
     if (activeModels.length > 0) {
-      // Try to put a smart/versatile model at the top of the queue if it exists
       const preferred = activeModels.find(
         (m: string) => m.includes("70b") || m.includes("llama-3.3"),
       );
@@ -53,12 +42,18 @@ const fetchAvailableModels = async (apiKey: string): Promise<string[]> => {
       }
       return activeModels;
     }
-
     return DEFAULT_FALLBACK_MODELS;
   } catch (error) {
-    console.warn("[AI] Network error fetching models. Using defaults.");
     return DEFAULT_FALLBACK_MODELS;
   }
+};
+
+// Helper to ensure proper capitalization of category names
+const toTitleCase = (str: string) => {
+  return str.replace(
+    /\w\S*/g,
+    (txt) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase(),
+  );
 };
 
 export const generateDeckViaAI = async (
@@ -71,36 +66,44 @@ export const generateDeckViaAI = async (
   if (!apiKey.trim())
     return { success: false, error: "Missing Groq API credentials." };
 
-  const prompt = `You are a professional word game card designer. Create a custom word-guessing game card pack themed specifically around the category: "${categoryName}".
-  Generate exactly 15 highly relevant concepts/words. 
+  const titleCasedName = toTitleCase(categoryName);
+
+  const prompt = `You are a professional word game card designer. Create a custom word-guessing game card pack themed around: "${titleCasedName}".
   
-  Return your complete response as a raw, single JSON object literal without markdown wrappers (no \`\`\`json blocks). Use this exact structure:
+  CRITICAL INSTRUCTION: You MUST generate EXACTLY 60 highly relevant cards. Do not stop early. Do not abbreviate. Output exactly 60 objects in the cards array.
+  
+  Return your complete response as a raw, single JSON object literal without markdown wrappers (no \`\`\`json blocks). Use this EXACT dual-structure:
   {
-    "name": "${categoryName}",
-    "category": "Community Generated",
-    "description": "A fun short description about ${categoryName}",
-    "icon": "Sparkles",
-    "color": "#8B5CF6",
-    "difficulty": "medium",
-    "tags": ["ai", "community"],
-    "cards": [
-      { "word": "Concept", "tabooWords": ["word1", "word2", "word3", "word4"], "charadesHint": "", "passwordHint": "" }
-    ]
+    "indexMeta": {
+      "category": "Actual Category (e.g. Science, Entertainment, Lifestyle)",
+      "icon": "LucideIconName (e.g. Rocket, Film, Heart)",
+      "color": "#HEXCODE"
+    },
+    "deckFile": {
+      "id": "${slugId}",
+      "name": "${titleCasedName}",
+      "category": "Actual Category",
+      "description": "Short, fun description about ${titleCasedName}",
+      "difficulty": "Medium",
+      "tags": ["tag1", "tag2"],
+      "cardCount": 60,
+      "cards": [
+        {
+          "word": "TARGET WORD",
+          "tabooWords": ["forbidden1", "forbidden2", "forbidden3", "forbidden4", "forbidden5"],
+          "charadesHint": "action hint",
+          "passwordHint": "short hint"
+        }
+      ]
+    }
   }`;
 
   let lastError = "Unknown generation error.";
-
-  // 1. Get the live list of models your account is allowed to use right now
   const modelsToTry = await fetchAvailableModels(apiKey);
-  console.log(
-    `[AI] Retrieved ${modelsToTry.length} models to try:`,
-    modelsToTry,
-  );
 
-  // 2. Fallback Loop Manager
   for (const model of modelsToTry) {
     try {
-      console.log(`[AI Generator] Attempting with model: ${model}`);
+      console.log(`[AI] Attempting with model: ${model}`);
 
       const response = await fetch(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -114,27 +117,24 @@ export const generateDeckViaAI = async (
             model: model,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
+            max_tokens: 7500, // Required to ensure the LLM has space to output 60 full cards
           }),
         },
       );
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        if (response.status === 429) {
+        if (response.status === 429)
           throw new Error(`Rate limited on ${model}`);
-        }
-        if (errData.error?.code === "model_decommissioned") {
+        if (errData.error?.code === "model_decommissioned")
           throw new Error(`${model} is decommissioned`);
-        }
-        throw new Error(
-          `API Error ${response.status} on ${model}: ${errData.error?.message || ""}`,
-        );
+        throw new Error(`API Error ${response.status} on ${model}`);
       }
 
       const data = await response.json();
       const content = data.choices[0]?.message?.content?.trim() || "";
 
-      // Cleanse markdown formatting if the LLM ignored instructions
+      // Cleanse markdown if present
       const jsonString = content
         .replace(/^```json\s*/i, "")
         .replace(/\s*```$/i, "")
@@ -149,45 +149,62 @@ export const generateDeckViaAI = async (
         );
       }
 
-      // Verify the essential array exists
-      if (!parsedData.cards || !Array.isArray(parsedData.cards)) {
+      if (
+        !parsedData.deckFile?.cards ||
+        !Array.isArray(parsedData.deckFile.cards)
+      ) {
         throw new Error(
           `Invalid JSON schema from ${model}. Moving to next model.`,
         );
       }
 
-      // Formatting correctly for the repository
-      const completeDeck = {
-        id: slugId,
-        name: parsedData.name || categoryName,
-        category: "Community Generated",
+      // Enforce the exact IDs and formatting required by your deckFile schema
+      const formattedDeckFile = {
+        id: parsedData.deckFile.id || slugId,
+        name: parsedData.deckFile.name || titleCasedName,
+        category:
+          parsedData.deckFile.category ||
+          parsedData.indexMeta?.category ||
+          "Community",
         description:
-          parsedData.description || `Community pack about ${categoryName}`,
-        icon: parsedData.icon || "Sparkles",
-        color: parsedData.color || "#8B5CF6",
-        difficulty: parsedData.difficulty || "medium",
-        tags: parsedData.tags || ["ai"],
-        cardCount: parsedData.cards.length,
-        cards: parsedData.cards.map((c: any, index: number) => ({
-          id: `${slugId}-card-${index + 1}`,
-          word: c.word,
-          tabooWords: Array.isArray(c.tabooWords) ? c.tabooWords : [],
+          parsedData.deckFile.description ||
+          `A community pack about ${titleCasedName}`,
+        difficulty: parsedData.deckFile.difficulty || "Medium",
+        tags: parsedData.deckFile.tags || [slugId],
+        cardCount: parsedData.deckFile.cards.length,
+        cards: parsedData.deckFile.cards.map((c: any, index: number) => ({
+          id: `${slugId}-${String(index + 1).padStart(3, "0")}`, // e.g. "christmas-001"
+          word: c.word?.toUpperCase() || "UNKNOWN",
+          tabooWords: Array.isArray(c.tabooWords)
+            ? c.tabooWords.slice(0, 5)
+            : [],
           charadesHint: c.charadesHint || "",
           passwordHint: c.passwordHint || "",
         })),
       };
 
-      console.log(`[AI Generator] Success using ${model}!`);
-      return { success: true, deck: completeDeck };
+      const formattedIndexMeta = {
+        category: parsedData.indexMeta?.category || "Community",
+        icon: parsedData.indexMeta?.icon || "Sparkles",
+        color: parsedData.indexMeta?.color || "#8B5CF6",
+      };
+
+      console.log(
+        `[AI] Success using ${model}! Generated ${formattedDeckFile.cardCount} cards.`,
+      );
+      return {
+        success: true,
+        deckFile: formattedDeckFile,
+        indexMeta: formattedIndexMeta,
+      };
     } catch (error: any) {
-      console.warn(`[AI Generator] ${model} failed:`, error.message);
+      console.warn(`[AI] ${model} failed:`, error.message);
       lastError = error.message;
-      // Loop continues to try the next model automatically
     }
   }
 
   return {
     success: false,
-    error: `All available models failed. Last error: ${lastError}`,
+    error: `All models failed. Last error: ${lastError}`,
   };
 };

@@ -1,17 +1,12 @@
 import { generateDeckViaAI } from "./aiGenerator";
 
 const REPO_OWNER = "fran-mg";
-const REPO_NAME = "rumble-decks";
+const REPO_NAME = "articulate-decks";
 const BRANCH = "main";
 const GITHUB_API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
 
-// Safe Base64 encoding/decoding for Unicode/UTF-8 strings in React Native
-const utf8ToBase64 = (str: string) => {
-  return btoa(unescape(encodeURIComponent(str)));
-};
-const base64ToUtf8 = (str: string) => {
-  return decodeURIComponent(escape(atob(str)));
-};
+const utf8ToBase64 = (str: string) => btoa(unescape(encodeURIComponent(str)));
+const base64ToUtf8 = (str: string) => decodeURIComponent(escape(atob(str)));
 
 const createSlug = (str: string) =>
   str
@@ -19,7 +14,6 @@ const createSlug = (str: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
 
-// Unified GitHub API Fetcher
 async function githubRequest(path: string, method: string = "GET", body?: any) {
   const GITHUB_TOKEN = process.env.EXPO_PUBLIC_GITHUB_PAT;
   const response = await fetch(`${GITHUB_API_BASE}/${path}`, {
@@ -45,16 +39,14 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
   const GROQ_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY;
   const GITHUB_TOKEN = process.env.EXPO_PUBLIC_GITHUB_PAT;
 
-  if (!GROQ_KEY || !GITHUB_TOKEN) {
-    return { success: false, error: "Missing API keys in environment." };
-  }
+  if (!GROQ_KEY || !GITHUB_TOKEN)
+    return { success: false, error: "Missing API keys." };
 
   const slug = createSlug(categoryName);
   const indexPath = "userGeneratedDecks-index.json";
   const deckPath = `generated-packs/${slug}.json`;
 
   try {
-    // 1. Fetch current Community Index
     const indexRes = await githubRequest(indexPath);
     let indexData = { decks: [] as any[] };
     let indexSha = "";
@@ -65,77 +57,70 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
       indexData = JSON.parse(base64ToUtf8(json.content));
     }
 
-    // 2. Prevent Duplicate Submission
     const exists = indexData.decks.some(
       (d) =>
         d.id === slug || d.name.toLowerCase() === categoryName.toLowerCase(),
     );
-    if (exists) {
+    if (exists)
       return {
         success: false,
-        error: `A pack for "${categoryName}" already exists in the community.`,
+        error: `A pack for "${categoryName}" already exists.`,
       };
-    }
 
-    // 3. AI Generation
+    // AI Generation
     const aiResult = await generateDeckViaAI(categoryName, GROQ_KEY, slug);
-    if (!aiResult.success || !aiResult.deck) {
+    if (!aiResult.success || !aiResult.deckFile || !aiResult.indexMeta) {
       return { success: false, error: aiResult.error };
     }
-    const newDeck = aiResult.deck;
 
-    // 4. TRANSACTION START: Upload the JSON file
+    const deckFile = aiResult.deckFile;
+    const indexMeta = aiResult.indexMeta;
+
+    // 1. Upload EXACT strict Deck JSON file (no icon/color metadata inside)
     const deckRes = await githubRequest(deckPath, "PUT", {
-      message: `Create generated pack: ${newDeck.name}`,
-      content: utf8ToBase64(JSON.stringify(newDeck, null, 2)),
+      message: `Create generated pack: ${deckFile.name}`,
+      content: utf8ToBase64(JSON.stringify(deckFile, null, 2)),
       branch: BRANCH,
     });
 
-    if (!deckRes.ok)
-      throw new Error("Failed to upload the new deck JSON to the repository.");
-    const deckJsonRes = await deckRes.json();
-    const newDeckSha = deckJsonRes.content.sha;
+    if (!deckRes.ok) throw new Error("Failed to upload the new deck JSON.");
+    const newDeckSha = (await deckRes.json()).content.sha;
 
-    // 5. Update the Index array
+    // 2. Build the Index Entry (This is where icon/color are injected)
     const newIndexEntry = {
-      id: newDeck.id,
-      name: newDeck.name,
-      category: newDeck.category,
-      description: newDeck.description,
-      icon: newDeck.icon,
-      color: newDeck.color,
+      id: deckFile.id,
+      name: deckFile.name,
+      category: indexMeta.category,
+      description: deckFile.description,
+      icon: indexMeta.icon,
+      color: indexMeta.color,
       url: `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${deckPath}`,
-      cardCount: newDeck.cardCount,
+      cardCount: deckFile.cardCount,
     };
-    indexData.decks.unshift(newIndexEntry); // Add to top
+    indexData.decks.unshift(newIndexEntry);
 
-    // 6. TRANSACTION END: Upload updated index
+    // 3. Upload updated Index
     const indexUpdateRes = await githubRequest(indexPath, "PUT", {
-      message: `Update community index with: ${newDeck.name}`,
+      message: `Update community index with: ${deckFile.name}`,
       content: utf8ToBase64(JSON.stringify(indexData, null, 2)),
-      sha: indexSha || undefined, // undefined for first-time creation
+      sha: indexSha || undefined,
       branch: BRANCH,
     });
 
-    // 7. ALL-OR-NOTHING ROLLBACK
     if (!indexUpdateRes.ok) {
-      // Rollback the JSON file we just created
       await githubRequest(deckPath, "DELETE", {
-        message: `Rollback: Delete orphaned pack ${newDeck.name}`,
+        message: `Rollback: Delete orphaned pack ${deckFile.name}`,
         sha: newDeckSha,
         branch: BRANCH,
       });
-      throw new Error(
-        "Failed to update the index. Changes were safely rolled back.",
-      );
+      throw new Error("Failed to update index. Changes rolled back.");
     }
 
     return {
       success: true,
-      message: `"${newDeck.name}" has been published globally! It may take a couple mins to appear.`,
+      message: `"${deckFile.name}" has been published! It may take a couple mins to appear.`,
     };
   } catch (error: any) {
-    console.error("Orchestration Error:", error);
     return {
       success: false,
       error: error.message || "An unexpected error occurred.",
