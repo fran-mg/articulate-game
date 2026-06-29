@@ -33,20 +33,34 @@ interface CloudDeckFile {
   cards: CloudDeckCard[];
 }
 
-const INDEX_URL =
-  "https://raw.githubusercontent.com/fran-mg/articulate-decks/main/decks-index.json";
+const BASE_REPO_URL =
+  "https://raw.githubusercontent.com/fran-mg/rumble-decks/main";
 
-export const fetchCloudDecksIndex = async (): Promise<CloudDeckIndexItem[]> => {
+export const fetchCloudDecksIndex = async (
+  filename: string = "decks-index.json",
+): Promise<CloudDeckIndexItem[]> => {
   try {
-    const response = await fetch(`${INDEX_URL}?t=${new Date().getTime()}`, {
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${BASE_REPO_URL}/${filename}?t=${new Date().getTime()}`,
+      {
+        cache: "no-store",
+      },
+    );
+
+    // If the community index doesn't exist yet, return an empty array gracefully
+    if (
+      response.status === 404 &&
+      filename === "userGeneratedDecks-index.json"
+    ) {
+      return [];
+    }
+
     if (!response.ok) throw new Error("Network response was not ok");
     const data = await response.json();
     return data.decks || [];
   } catch (error) {
-    console.error("Failed to fetch decks index:", error);
-    throw error;
+    console.error(`Failed to fetch ${filename}:`, error);
+    throw error; // Or return [] if you prefer it to fail silently
   }
 };
 

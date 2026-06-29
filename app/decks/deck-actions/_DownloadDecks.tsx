@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,8 +16,19 @@ import {
   downloadAndImportDeck,
   fetchCloudDecksIndex,
 } from "../../../utils/cloudDecks";
+import { orchestrateCommunityDeckGeneration } from "../../../utils/githubSync";
 import { useSoundManager } from "../../../hooks/useSoundManager";
 import { useAppAlert } from "../../_AppAlert";
+
+const getLucideIcon = (iconName: string | undefined, Fallback: any) => {
+  if (!iconName) return Fallback;
+  if ((LucideIcons as any)[iconName]) return (LucideIcons as any)[iconName];
+  const pascal = iconName
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join("");
+  return (LucideIcons as any)[pascal] || Fallback;
+};
 
 interface CloudDecksModalProps {
   visible: boolean;
@@ -25,34 +37,29 @@ interface CloudDecksModalProps {
   installedDecks: any[];
 }
 
-// Helper to reliably map icon names
-const getLucideIcon = (iconName: string | undefined, Fallback: any) => {
-  if (!iconName) return Fallback;
-  // Try direct lookup first
-  if ((LucideIcons as any)[iconName]) {
-    return (LucideIcons as any)[iconName];
-  }
-  // Convert kebab-case to PascalCase
-  const pascal = iconName
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join("");
-
-  return (LucideIcons as any)[pascal] || Fallback;
-};
-
 export default function CloudDecksModal({
   visible,
   onClose,
   onDecksUpdated,
   installedDecks,
 }: CloudDecksModalProps) {
-  const [cloudDecks, setCloudDecks] = useState<CloudDeckIndexItem[]>([]);
+  const [activeTab, setActiveTab] = useState<"official" | "community">(
+    "official",
+  );
+
+  const [officialDecks, setOfficialDecks] = useState<CloudDeckIndexItem[]>([]);
+  const [communityDecks, setCommunityDecks] = useState<CloudDeckIndexItem[]>(
+    [],
+  );
+
   const [isFetching, setIsFetching] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const { playSound } = useSoundManager(["download"]);
+  // New Pack Generation State
+  const [newCategoryPrompt, setNewCategoryPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
+  const { playSound } = useSoundManager(["download", "click"]);
   const { showAlert, AlertRender } = useAppAlert();
 
   useEffect(() => {
@@ -62,13 +69,14 @@ export default function CloudDecksModal({
   const fetchDecks = async () => {
     setIsFetching(true);
     try {
-      const items = await fetchCloudDecksIndex();
-      setCloudDecks(items);
+      const [off, comm] = await Promise.all([
+        fetchCloudDecksIndex("decks-index.json"),
+        fetchCloudDecksIndex("userGeneratedDecks-index.json").catch(() => []), // Failsafe
+      ]);
+      setOfficialDecks(off);
+      setCommunityDecks(comm);
     } catch {
-      showAlert(
-        "Connection Error",
-        "Failed to reach the community repository.",
-      );
+      showAlert("Connection Error", "Failed to reach the repository.");
     } finally {
       setIsFetching(false);
     }
@@ -81,17 +89,35 @@ export default function CloudDecksModal({
 
     if (result.success) {
       playSound("download");
-
       await onDecksUpdated();
-      const message =
-        result.deckName === cloudDeck.name
-          ? `${cloudDeck.name} has been added.`
-          : `Downloaded as "${result.deckName}".`;
-      showAlert("Downloaded!", message);
+      showAlert(
+        "Downloaded!",
+        `${cloudDeck.name} has been added to your library.`,
+      );
     } else {
       showAlert("Download Failed", result.errorMsg || "Something went wrong.");
     }
   };
+
+  const handleGenerateCommunityPack = async () => {
+    const trimmed = newCategoryPrompt.trim();
+    if (!trimmed) return;
+
+    setIsGenerating(true);
+    const result = await orchestrateCommunityDeckGeneration(trimmed);
+    setIsGenerating(false);
+
+    if (result.success) {
+      playSound("download");
+      setNewCategoryPrompt("");
+      await fetchDecks(); // Refresh list to show newly published deck
+      showAlert("Pack Published!", result.message as string);
+    } else {
+      showAlert("Generation Failed", result.error);
+    }
+  };
+
+  const currentList = activeTab === "official" ? officialDecks : communityDecks;
 
   return (
     <Modal
@@ -103,7 +129,7 @@ export default function CloudDecksModal({
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.eyebrow}>Community</Text>
+            <Text style={styles.eyebrow}>Cloud</Text>
             <Text style={styles.title}>Browse Packs</Text>
           </View>
           <TouchableOpacity
@@ -115,7 +141,87 @@ export default function CloudDecksModal({
           </TouchableOpacity>
         </View>
 
+        {/* Tab Navigator */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "official" && styles.activeTab]}
+            onPress={() => {
+              playSound("click");
+              setActiveTab("official");
+            }}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "official" && styles.activeTabText,
+              ]}
+            >
+              Official Packs
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "community" && styles.activeTab]}
+            onPress={() => {
+              playSound("click");
+              setActiveTab("community");
+            }}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "community" && styles.activeTabText,
+              ]}
+            >
+              Community AI
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.divider} />
+
+        {/* AI Generation Input (Only shown in Community tab) */}
+        {activeTab === "community" && (
+          <View style={styles.generateContainer}>
+            <Text style={styles.generateLabel}>
+              Publish a New Theme globally
+            </Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 90s Cartoons, Space Exploration..."
+                placeholderTextColor="#64748b"
+                value={newCategoryPrompt}
+                onChangeText={setNewCategoryPrompt}
+                editable={!isGenerating}
+                returnKeyType="send"
+                onSubmitEditing={handleGenerateCommunityPack}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.generateBtn,
+                  (!newCategoryPrompt.trim() || isGenerating) &&
+                    styles.generateBtnDisabled,
+                ]}
+                onPress={handleGenerateCommunityPack}
+                disabled={!newCategoryPrompt.trim() || isGenerating}
+                activeOpacity={0.7}
+              >
+                {isGenerating ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <LucideIcons.Sparkles size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+            {isGenerating && (
+              <Text style={styles.generatingSubtext}>
+                Creating & syncing to GitHub... this takes a moment.
+              </Text>
+            )}
+          </View>
+        )}
 
         {isFetching ? (
           <View style={styles.loadingContainer}>
@@ -127,17 +233,19 @@ export default function CloudDecksModal({
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           >
-            {cloudDecks.length === 0 ? (
+            {currentList.length === 0 ? (
               <View style={styles.emptyState}>
                 <LucideIcons.CloudOff
                   color="#475569"
                   size={40}
                   strokeWidth={1.5}
                 />
-                <Text style={styles.emptyText}>No community decks found</Text>
+                <Text style={styles.emptyText}>
+                  No decks found in this category.
+                </Text>
               </View>
             ) : (
-              cloudDecks.map((cloudDeck) => {
+              currentList.map((cloudDeck) => {
                 const isInstalled = installedDecks.some(
                   (d) => d.name === cloudDeck.name,
                 );
@@ -150,8 +258,6 @@ export default function CloudDecksModal({
                 return (
                   <View key={cloudDeck.id} style={styles.deckCard}>
                     <View style={styles.cardShine} pointerEvents="none" />
-
-                    {/* Header row */}
                     <View style={styles.deckHeader}>
                       <View
                         style={[
@@ -176,8 +282,7 @@ export default function CloudDecksModal({
                           </Text>
                           <View style={styles.deckMetaDot} />
                           <Text style={styles.deckCardCount}>
-                            {cloudDeck.cardCount}{" "}
-                            {cloudDeck.cardCount === 1 ? "card" : "cards"}
+                            {cloudDeck.cardCount} cards
                           </Text>
                         </View>
                       </View>
@@ -194,11 +299,7 @@ export default function CloudDecksModal({
                         </View>
                       )}
                     </View>
-
-                    {/* Description */}
                     <Text style={styles.deckDesc}>{cloudDeck.description}</Text>
-
-                    {/* Download button - always show, with different text if installed */}
                     <TouchableOpacity
                       onPress={() => handleDownload(cloudDeck)}
                       disabled={isDownloading}
@@ -231,8 +332,6 @@ export default function CloudDecksModal({
                             : "Download Pack"}
                       </Text>
                     </TouchableOpacity>
-
-                    {/* Colour strip */}
                     <View
                       style={[
                         styles.colorStrip,
@@ -252,12 +351,7 @@ export default function CloudDecksModal({
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-
-  // ── Header ────────────────────────────────────────────────────────────────
+  root: { flex: 1, backgroundColor: "#020617" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -290,6 +384,65 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  /* Tabs */
+  tabContainer: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 10 },
+  activeTab: { backgroundColor: "#6366f1" },
+  tabText: { color: "#94a3b8", fontSize: 13, fontWeight: "700" },
+  activeTabText: { color: "#ffffff" },
+
+  /* AI Generator Styles */
+  generateContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    paddingTop: 8,
+  },
+  generateLabel: {
+    color: "#94a3b8",
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginBottom: 8,
+    letterSpacing: 1.5,
+  },
+  inputRow: { flexDirection: "row", gap: 10 },
+  input: {
+    flex: 1,
+    height: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  generateBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#8b5cf6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  generateBtnDisabled: { opacity: 0.5 },
+  generatingSubtext: {
+    color: "#a78bfa",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 8,
+    fontStyle: "italic",
+    alignSelf: "center",
+  },
+
   divider: {
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -302,18 +455,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
   },
-  loadingText: {
-    color: "#94a3b8",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 48,
-  },
+  loadingText: { color: "#94a3b8", fontSize: 13, fontWeight: "700" },
+  listContent: { padding: 16, gap: 12, paddingBottom: 48 },
 
-  // ── Deck card ────────────────────────────────────────────────────────────
   deckCard: {
     backgroundColor: "#0f172a",
     borderWidth: 1,
@@ -333,11 +477,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
-  deckHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  deckHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   deckIcon: {
     width: 52,
     height: 52,
@@ -354,11 +494,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     marginBottom: 5,
   },
-  deckMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
+  deckMetaRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   deckCategory: {
     color: "#cbd5e1",
     fontSize: 11,
@@ -371,11 +507,7 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     backgroundColor: "#475569",
   },
-  deckCardCount: {
-    color: "#94a3b8",
-    fontSize: 11,
-    fontWeight: "600",
-  },
+  deckCardCount: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
   installedBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -411,10 +543,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(99,102,241,0.5)",
     backgroundColor: "rgba(99,102,241,0.1)",
   },
-  downloadBtnLoading: {
-    opacity: 0.6,
-    borderStyle: "solid",
-  },
+  downloadBtnLoading: { opacity: 0.6, borderStyle: "solid" },
   downloadBtnRedownload: {
     borderStyle: "solid",
     borderColor: "rgba(148,163,184,0.3)",
@@ -426,9 +555,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  downloadBtnTextRedownload: {
-    color: "#94a3b8",
-  },
+  downloadBtnTextRedownload: { color: "#94a3b8" },
   colorStrip: {
     position: "absolute",
     bottom: 0,
@@ -443,9 +570,5 @@ const styles = StyleSheet.create({
     paddingVertical: 56,
     gap: 14,
   },
-  emptyText: {
-    color: "#64748b",
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  emptyText: { color: "#64748b", fontSize: 13, fontWeight: "700" },
 });
