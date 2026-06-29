@@ -132,7 +132,7 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
 
     return {
       success: true,
-      message: `"${newDeck.name}" has been published globally!`,
+      message: `"${newDeck.name}" has been published globally! It may take a couple mins to appear.`,
     };
   } catch (error: any) {
     console.error("Orchestration Error:", error);
