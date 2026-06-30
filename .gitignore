@@ -61,6 +61,7 @@ package-list.txt
 *.keystore
 credentials.json
 
-# Personal
+# Personal Developer Notes
+DEV_NOTES.md
 ME_NOTES.md
 codebase_dump.txt
