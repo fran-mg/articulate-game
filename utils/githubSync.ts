@@ -1,9 +1,10 @@
 import { generateDeckViaAI } from "./aiGenerator";
 
+const PROXY_BASE_URL = process.env.EXPO_PUBLIC_PROXY_URL ?? "";
+
 const REPO_OWNER = "fran-mg";
 const REPO_NAME = "articulate-decks";
 const BRANCH = "main";
-const GITHUB_API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
 
 const utf8ToBase64 = (str: string) => btoa(unescape(encodeURIComponent(str)));
 const base64ToUtf8 = (str: string) => decodeURIComponent(escape(atob(str)));
@@ -15,16 +16,26 @@ const createSlug = (str: string) =>
     .replace(/(^-|-$)+/g, "");
 
 async function githubRequest(path: string, method: string = "GET", body?: any) {
-  const GITHUB_TOKEN = process.env.EXPO_PUBLIC_GITHUB_PAT;
-  const response = await fetch(`${GITHUB_API_BASE}/${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      Accept: "application/vnd.github.v3+json",
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  if (!PROXY_BASE_URL) throw new Error("Proxy URL not configured");
+
+  const fullUrl = `${PROXY_BASE_URL}/github?path=${encodeURIComponent(path)}`;
+
+  let response: Response;
+
+  if (method === "GET") {
+    // For GET requests, pass path via query param
+    response = await fetch(fullUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+  } else {
+    // For PUT/DELETE, send as POST to proxy (proxy forwards real method)
+    response = await fetch(`${PROXY_BASE_URL}/github`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, method, body }),
+    });
+  }
 
   if (!response.ok && response.status !== 404) {
     const err = await response.json().catch(() => ({}));
@@ -36,11 +47,8 @@ async function githubRequest(path: string, method: string = "GET", body?: any) {
 }
 
 export async function orchestrateCommunityDeckGeneration(categoryName: string) {
-  const GROQ_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY;
-  const GITHUB_TOKEN = process.env.EXPO_PUBLIC_GITHUB_PAT;
-
-  if (!GROQ_KEY || !GITHUB_TOKEN)
-    return { success: false, error: "Missing API keys." };
+  if (!PROXY_BASE_URL)
+    return { success: false, error: "Proxy URL not configured." };
 
   const slug = createSlug(categoryName);
   const indexPath = "userGeneratedDecks-index.json";
@@ -67,8 +75,8 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
         error: `A pack for "${categoryName}" already exists.`,
       };
 
-    // AI Generation
-    const aiResult = await generateDeckViaAI(categoryName, GROQ_KEY, slug);
+    // AI Generation - no more passing Groq key!
+    const aiResult = await generateDeckViaAI(categoryName, slug);
     if (!aiResult.success || !aiResult.deckFile || !aiResult.indexMeta) {
       return { success: false, error: aiResult.error };
     }
@@ -76,7 +84,7 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
     const deckFile = aiResult.deckFile;
     const indexMeta = aiResult.indexMeta;
 
-    // 1. Upload EXACT strict Deck JSON file (no icon/color metadata inside)
+    // Upload Deck File
     const deckRes = await githubRequest(deckPath, "PUT", {
       message: `Create generated pack: ${deckFile.name}`,
       content: utf8ToBase64(JSON.stringify(deckFile, null, 2)),
@@ -86,7 +94,7 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
     if (!deckRes.ok) throw new Error("Failed to upload the new deck JSON.");
     const newDeckSha = (await deckRes.json()).content.sha;
 
-    // 2. Build the Index Entry (This is where icon/color are injected)
+    // Build Index Entry
     const newIndexEntry = {
       id: deckFile.id,
       name: deckFile.name,
@@ -99,7 +107,7 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
     };
     indexData.decks.unshift(newIndexEntry);
 
-    // 3. Upload updated Index
+    // Upload Updated Index
     const indexUpdateRes = await githubRequest(indexPath, "PUT", {
       message: `Update community index with: ${deckFile.name}`,
       content: utf8ToBase64(JSON.stringify(indexData, null, 2)),
@@ -120,7 +128,7 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
       success: true,
       deckFile,
       indexMeta,
-      message: `"${deckFile.name}" has been published to the community and added to your library! It may take time before apprearing in the Community Decks.`,
+      message: `"${deckFile.name}" has been published to the community and added to your library! It may take time before appearing in the Community Decks.`,
     };
   } catch (error: any) {
     return {

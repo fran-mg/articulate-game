@@ -18,13 +18,13 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_NO_TELEMETRY": "1"
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_PROXY_URL": "https://rumble-proxy.rumble-studio.workers.dev"
       }
     },
     "production": {
-      "channel": "production",
-      "android": {
-        "buildType": "app-bundle"
+      "env": {
+        "EXPO_PUBLIC_PROXY_URL": "https://rumble-proxy.rumble-studio.workers.dev"
       }
     }
   },

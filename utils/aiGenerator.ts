@@ -12,40 +12,11 @@ const DEFAULT_FALLBACK_MODELS = [
   "qwen/qwen3-32b",
 ];
 
-const fetchAvailableModels = async (apiKey: string): Promise<string[]> => {
-  try {
-    const res = await fetch("https://api.groq.com/openai/v1/models", {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
+const PROXY_BASE_URL = process.env.EXPO_PUBLIC_PROXY_URL ?? "";
 
-    if (!res.ok) return DEFAULT_FALLBACK_MODELS;
-
-    const data = await res.json();
-    const activeModels = data.data
-      .map((m: any) => m.id)
-      .filter(
-        (id: string) =>
-          !id.includes("whisper") &&
-          !id.includes("prompt-guard") &&
-          !id.includes("safeguard"),
-      );
-
-    if (activeModels.length > 0) {
-      const preferred = activeModels.find(
-        (m: string) => m.includes("70b") || m.includes("llama-3.3"),
-      );
-      if (preferred) {
-        return [
-          preferred,
-          ...activeModels.filter((m: string) => m !== preferred),
-        ];
-      }
-      return activeModels;
-    }
-    return DEFAULT_FALLBACK_MODELS;
-  } catch (error) {
-    return DEFAULT_FALLBACK_MODELS;
-  }
+const fetchAvailableModels = async (): Promise<string[]> => {
+  // Proxy handles authentication now, just return fallback list
+  return DEFAULT_FALLBACK_MODELS;
 };
 
 // Helper to ensure proper capitalization of category names
@@ -56,23 +27,12 @@ const toTitleCase = (str: string) => {
   );
 };
 
-export const generateDeckViaAI = async (
-  categoryName: string,
-  apiKey: string,
-  slugId: string,
-): Promise<GenerationResult> => {
-  if (!categoryName.trim())
-    return { success: false, error: "Category name is blank." };
-  if (!apiKey.trim())
-    return { success: false, error: "Missing Groq API credentials." };
-
-  const titleCasedName = toTitleCase(categoryName);
-
-  const prompt = `You are a professional word game card designer. Create a custom word-guessing game card pack themed around: "${titleCasedName}".
+function buildPrompt(titleCasedName: string, slugId: string): string {
+  return `You are a professional word game card designer. Create a custom word-guessing game card pack themed around: "${titleCasedName}".
   
   CRITICAL INSTRUCTION: You MUST generate EXACTLY 60 highly relevant cards. Do not stop early. Do not abbreviate. Output exactly 60 objects in the cards array.
   
-  Return your complete response as a raw, single JSON object literal without markdown wrappers (no \`\`\`json blocks). Use this EXACT dual-structure:
+  Return your complete response as a raw, single JSON object literal without markdown wrappers. Use this EXACT dual-structure:
   {
     "indexMeta": {
       "category": "Actual Category (e.g. Science, Entertainment, Lifestyle)",
@@ -97,37 +57,40 @@ export const generateDeckViaAI = async (
       ]
     }
   }`;
+}
 
+export const generateDeckViaAI = async (
+  categoryName: string,
+  slugId: string,
+): Promise<GenerationResult> => {
+  if (!categoryName.trim())
+    return { success: false, error: "Category name is blank." };
+  if (!PROXY_BASE_URL)
+    return { success: false, error: "Proxy URL not configured." };
+
+  const titleCasedName = toTitleCase(categoryName);
+  const modelsToTry = await fetchAvailableModels();
   let lastError = "Unknown generation error.";
-  const modelsToTry = await fetchAvailableModels(apiKey);
 
   for (const model of modelsToTry) {
     try {
       console.log(`[AI] Attempting with model: ${model}`);
 
-      const response = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: 7500, // Required to ensure the LLM has space to output 60 full cards
-          }),
-        },
-      );
+      const response = await fetch(`${PROXY_BASE_URL}/groq`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "user", content: buildPrompt(titleCasedName, slugId) },
+          ],
+          temperature: 0.7,
+          max_tokens: 7500, // Required to ensure the LLM has space to output 60 full cards
+        }),
+      });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        if (response.status === 429)
-          throw new Error(`Rate limited on ${model}`);
-        if (errData.error?.code === "model_decommissioned")
-          throw new Error(`${model} is decommissioned`);
         throw new Error(`API Error ${response.status} on ${model}`);
       }
 
