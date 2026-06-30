@@ -70,4 +70,6 @@ jobs:
 
       # 3. Publish to EAS using the dynamically chosen message
       - name: 🚀 Publish EAS Update
+        env:
+          EXPO_PUBLIC_PROXY_URL: "https://rumble-proxy.rumble-studio.workers.dev"
         run: eas update --branch preview --message "${{ env.UPDATE_MESSAGE }}" --non-interactive
