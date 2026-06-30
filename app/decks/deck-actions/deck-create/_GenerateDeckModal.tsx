@@ -18,7 +18,7 @@ import { useAppAlert } from "../../../_AppAlert";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (deckFile: any, indexMeta: any) => void;
 }
 
 export default function GenerateDeckModal({
@@ -43,7 +43,7 @@ export default function GenerateDeckModal({
     if (result.success) {
       playSound("download");
       setPrompt("");
-      onSuccess();
+      onSuccess(result.deckFile, result.indexMeta);
       showAlert("Pack Published!", result.message as string);
     } else {
       showAlert("Generation Failed", result.error);

@@ -118,7 +118,9 @@ export async function orchestrateCommunityDeckGeneration(categoryName: string) {
 
     return {
       success: true,
-      message: `"${deckFile.name}" has been published! It may take a couple mins to appear.`,
+      deckFile,
+      indexMeta,
+      message: `"${deckFile.name}" has been published to the community and added to your library! It may take time before apprearing in the Community Decks.`,
     };
   } catch (error: any) {
     return {

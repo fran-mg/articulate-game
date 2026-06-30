@@ -15,6 +15,7 @@ import CreateOptionsModal from "./deck-actions/deck-create/_CreateOptionsModal";
 import GenerateDeckModal from "./deck-actions/deck-create/_GenerateDeckModal";
 import DeckActionsRow from "./_DeckActionsRow";
 import { styles } from "./Decks.styles";
+import { dbHelpers } from "../../utils/database";
 
 export default function DecksScreen() {
   const { decks, loadDecks, deleteDeck } = useDeckStore();
@@ -115,13 +116,39 @@ export default function DecksScreen() {
       <GenerateDeckModal
         visible={isGenerateModalVisible}
         onClose={() => setIsGenerateModalVisible(false)}
-        onSuccess={() => {
+        onSuccess={async (deckFile, indexMeta) => {
           setIsGenerateModalVisible(false);
-          // Give a brief moment for the modal to close, then pop the Cloud Modal open
-          // so they can see/download their newly generated deck!
-          setTimeout(() => {
-            setIsCloudModalVisible(true);
-          }, 500);
+
+          try {
+            // Auto-install the newly generated deck locally so they don't have to wait for the cloud
+            const deckId = await dbHelpers.createDeck(
+              deckFile.name,
+              indexMeta.category || deckFile.category || "Community",
+              "community",
+              indexMeta.icon || deckFile.icon || "Sparkles",
+              indexMeta.color || deckFile.color || "#8B5CF6",
+              deckFile.description || "",
+              `https://raw.githubusercontent.com/fran-mg/rumble-decks/main/generated-packs/${deckFile.id}.json`,
+            );
+
+            if (deckId && deckFile.cards) {
+              for (const card of deckFile.cards) {
+                await dbHelpers.createCard(
+                  deckId,
+                  card.word,
+                  card.tabooWords || [],
+                  card.charadesHint ?? "",
+                  card.passwordHint ?? "",
+                );
+              }
+            }
+
+            // Refresh UI and jump to the Community Generated tab to show off their new creation
+            await loadDecks();
+            setActiveTab("community generated");
+          } catch (e) {
+            console.error("Auto-install failed", e);
+          }
         }}
       />
 
