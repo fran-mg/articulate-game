@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -16,7 +15,6 @@ import {
   downloadAndImportDeck,
   fetchCloudDecksIndex,
 } from "../../../utils/cloudDecks";
-import { orchestrateCommunityDeckGeneration } from "../../../utils/githubSync";
 import { useSoundManager } from "../../../hooks/useSoundManager";
 import { useAppAlert } from "../../_AppAlert";
 
@@ -46,18 +44,12 @@ export default function CloudDecksModal({
   const [activeTab, setActiveTab] = useState<"official" | "community">(
     "official",
   );
-
   const [officialDecks, setOfficialDecks] = useState<CloudDeckIndexItem[]>([]);
   const [communityDecks, setCommunityDecks] = useState<CloudDeckIndexItem[]>(
     [],
   );
-
   const [isFetching, setIsFetching] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  // New Pack Generation State
-  const [newCategoryPrompt, setNewCategoryPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const { playSound } = useSoundManager(["download", "click"]);
   const { showAlert, AlertRender } = useAppAlert();
@@ -71,7 +63,7 @@ export default function CloudDecksModal({
     try {
       const [off, comm] = await Promise.all([
         fetchCloudDecksIndex("decks-index.json"),
-        fetchCloudDecksIndex("userGeneratedDecks-index.json").catch(() => []), // Failsafe
+        fetchCloudDecksIndex("userGeneratedDecks-index.json").catch(() => []),
       ]);
       setOfficialDecks(off);
       setCommunityDecks(comm);
@@ -96,24 +88,6 @@ export default function CloudDecksModal({
       );
     } else {
       showAlert("Download Failed", result.errorMsg || "Something went wrong.");
-    }
-  };
-
-  const handleGenerateCommunityPack = async () => {
-    const trimmed = newCategoryPrompt.trim();
-    if (!trimmed) return;
-
-    setIsGenerating(true);
-    const result = await orchestrateCommunityDeckGeneration(trimmed);
-    setIsGenerating(false);
-
-    if (result.success) {
-      playSound("download");
-      setNewCategoryPrompt("");
-      await fetchDecks(); // Refresh list to show newly published deck
-      showAlert("Pack Published!", result.message as string);
-    } else {
-      showAlert("Generation Failed", result.error);
     }
   };
 
@@ -174,54 +148,12 @@ export default function CloudDecksModal({
                 activeTab === "community" && styles.activeTabText,
               ]}
             >
-              Community AI
+              Community
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.divider} />
-
-        {/* AI Generation Input (Only shown in Community tab) */}
-        {activeTab === "community" && (
-          <View style={styles.generateContainer}>
-            <Text style={styles.generateLabel}>
-              Publish a New Theme globally
-            </Text>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 90s Cartoons, Space Exploration..."
-                placeholderTextColor="#64748b"
-                value={newCategoryPrompt}
-                onChangeText={setNewCategoryPrompt}
-                editable={!isGenerating}
-                returnKeyType="send"
-                onSubmitEditing={handleGenerateCommunityPack}
-              />
-              <TouchableOpacity
-                style={[
-                  styles.generateBtn,
-                  (!newCategoryPrompt.trim() || isGenerating) &&
-                    styles.generateBtnDisabled,
-                ]}
-                onPress={handleGenerateCommunityPack}
-                disabled={!newCategoryPrompt.trim() || isGenerating}
-                activeOpacity={0.7}
-              >
-                {isGenerating ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <LucideIcons.Sparkles size={20} color="#fff" />
-                )}
-              </TouchableOpacity>
-            </View>
-            {isGenerating && (
-              <Text style={styles.generatingSubtext}>
-                Creating & syncing to GitHub... this takes a moment.
-              </Text>
-            )}
-          </View>
-        )}
 
         {isFetching ? (
           <View style={styles.loadingContainer}>
@@ -384,8 +316,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  /* Tabs */
   tabContainer: {
     flexDirection: "row",
     marginHorizontal: 20,
@@ -398,51 +328,6 @@ const styles = StyleSheet.create({
   activeTab: { backgroundColor: "#6366f1" },
   tabText: { color: "#94a3b8", fontSize: 13, fontWeight: "700" },
   activeTabText: { color: "#ffffff" },
-
-  /* AI Generator Styles */
-  generateContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    paddingTop: 8,
-  },
-  generateLabel: {
-    color: "#94a3b8",
-    fontSize: 10,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    marginBottom: 8,
-    letterSpacing: 1.5,
-  },
-  inputRow: { flexDirection: "row", gap: 10 },
-  input: {
-    flex: 1,
-    height: 50,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    color: "#fff",
-    fontWeight: "600",
-  },
-  generateBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: "#8b5cf6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  generateBtnDisabled: { opacity: 0.5 },
-  generatingSubtext: {
-    color: "#a78bfa",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 8,
-    fontStyle: "italic",
-    alignSelf: "center",
-  },
-
   divider: {
     height: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -457,7 +342,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: "#94a3b8", fontSize: 13, fontWeight: "700" },
   listContent: { padding: 16, gap: 12, paddingBottom: 48 },
-
   deckCard: {
     backgroundColor: "#0f172a",
     borderWidth: 1,
