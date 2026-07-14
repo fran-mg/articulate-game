@@ -30,7 +30,7 @@ const toTitleCase = (str: string) => {
 function buildPrompt(titleCasedName: string, slugId: string): string {
   return `You are a professional word game card designer. Create a custom word-guessing game card pack themed around: "${titleCasedName}".
   
-  CRITICAL INSTRUCTION: You MUST generate EXACTLY 60 highly relevant cards. Do not stop early. Do not abbreviate. Output exactly 60 objects in the cards array.
+  CRITICAL INSTRUCTION: You MUST generate EXACTLY 200 highly relevant cards. Do not stop early. Do not abbreviate. Output exactly 200 objects in the cards array.
   
   Return your complete response as a raw, single JSON object literal without markdown wrappers. Use this EXACT dual-structure:
   {
@@ -46,7 +46,7 @@ function buildPrompt(titleCasedName: string, slugId: string): string {
       "description": "Short, fun description about ${titleCasedName}",
       "difficulty": "Medium",
       "tags": ["tag1", "tag2"],
-      "cardCount": 60,
+      "cardCount": 200,
       "cards": [
         {
           "word": "TARGET WORD",
@@ -85,7 +85,7 @@ export const generateDeckViaAI = async (
             { role: "user", content: buildPrompt(titleCasedName, slugId) },
           ],
           temperature: 0.7,
-          max_tokens: 7500, // Required to ensure the LLM has space to output 60 full cards
+          max_tokens: 25000, // Required to ensure the LLM has space to output 200 full cards
         }),
       });
 
