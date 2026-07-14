@@ -214,7 +214,7 @@ export default function PlayScreen() {
     width: progress.value * dims.width,
   }));
 
-  const handleAction = (action: "guessed" | "passed") => {
+const handleAction = (action: "guessed" | "passed") => {
     if (gameState !== "playing" || flashState !== "default" || !currentCard)
       return;
 
@@ -231,14 +231,11 @@ export default function PlayScreen() {
 
     setTimeout(() => {
       setFlashState("default");
-      if (currentCardIndex + 1 >= cardsInRound.length) {
-        cancelAnimation(progress);
-        if (continuousIntervalRef.current)
-          clearInterval(continuousIntervalRef.current);
-        triggerTimeUp();
-      } else {
-        nextCard();
-      }
+
+      // We removed the forced `triggerTimeUp()` here.
+      // `nextCard()` now smartly loops/reshuffles if we run out of cards.
+      // Turns will now strictly only end when time is up.
+      nextCard();
     }, 200);
   };
 

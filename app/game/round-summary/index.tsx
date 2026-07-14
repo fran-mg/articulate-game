@@ -56,15 +56,13 @@ export default function RoundSummaryScreen() {
 
   const nextEntity = participants[(currentTurnIndex + 1) % participants.length];
 
-  const handleNext = async () => {
+  const handleNext = () => {
     playSound("click");
     if (isMatchOver) {
       router.replace("/game/match-summary" as any);
     } else {
-      await useDeckStore.getState().loadCardsForSelectedDecks();
-      const freshCards = useDeckStore.getState().currentCards;
-
-      if (freshCards.length === 0) {
+      // Check if there are still cards in the store (Deck is preserved across turns now!)
+      if (gameStore.cardsInRound.length === 0) {
         showAlert(
           "No Decks Selected",
           "Please open settings (top left) and select at least one deck to continue.",
@@ -81,14 +79,14 @@ export default function RoundSummaryScreen() {
           state.currentTurnIndex === participants.length - 1
             ? state.currentRound + 1
             : state.currentRound,
-        cardsInRound: freshCards,
       }));
 
       router.replace("/game/play" as any);
     }
   };
 
-  const handleSaveSettings = () => {
+  // Convert to async so we can fetch new cards if decks were modified
+  const handleSaveSettings = async () => {
     let newLim: number | "Infinity" = editLimit;
     if (editLimit !== "Infinity") {
       const parsed = typeof editLimit === "number" ? editLimit : currentRound;
@@ -103,6 +101,22 @@ export default function RoundSummaryScreen() {
       targetLimit: newLim,
       timerDuration: newTimer,
     });
+
+    // 1. Fetch the cards for whatever decks are currently selected in the UI
+    await useDeckStore.getState().loadCardsForSelectedDecks();
+    const freshCards = useDeckStore.getState().currentCards;
+
+    if (freshCards.length === 0) {
+      showAlert(
+        "No Cards",
+        "You deselected all cards! Please select at least one deck.",
+      );
+      return; // Stop them from closing the modal if they disabled all decks
+    }
+
+    // 2. Inject them into the game store!
+    // This will smartly filter out already played cards and shuffle the remaining!
+    gameStore.updateCardsMidGame(freshCards);
 
     setEditLimit(newLim);
     setEditTimer(newTimer);
@@ -122,13 +136,11 @@ export default function RoundSummaryScreen() {
   const getButtonText = () => {
     if (isMatchOver) return "Reveal Final Scores";
 
-    // Generic button mapping for Casual Mode
     if (playStyle === "just_play") {
       if (isNextRoundFinal) return "Start Final Round";
       return `Start Round ${nextRound}`;
     }
 
-    // Default named button mapping
     const entityName = nextEntity?.name ?? "Next";
     if (isNextRoundFinal) return `${entityName} — Start Final Round`;
     if (isLastTurnOfRound) return `${entityName} — Start Round ${nextRound}`;
